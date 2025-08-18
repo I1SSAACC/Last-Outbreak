@@ -4,18 +4,32 @@
 TagManager:
   serializedVersion: 2
   tags:
-  - DeadZone
-  - VehicleArea
-  - Bullet
-  - Loop
-  - RagdollZone
-  - Grass
-  - Stone
-  - Tiles
-  - Skin
+  - Action
+  - AutoCrouch
+  - Ragdoll
+  - Ignore Ragdoll
+  - Boss
   - Enemy
-  - Distractable
-  - CoverTrigger
+  - CompanionAI
+  - Weapon
+  - LookAt
+  - Dirt
+  - Wood
+  - Metal
+  - Concrete
+  - Glass
+  - Water
+  - LadderTrigger
+  - ExitWater
+  - Barrel
+  - FreeClimb
+  - ClimbDirection
+  - Zipline
+  - PlayerUI
+  - Collectable
+  - CoverPoint
+  - Interactable
+  - AIAction
   layers:
   - Default
   - TransparentFX
@@ -25,16 +39,17 @@ TagManager:
   - UI
   - 
   - 
-  - Vehicle
-  - Character
-  - Bullet
-  - Terrain
-  - VehicleMeshCollider
-  - VehicleWheel
-  - Item
-  - Bones
-  - Walls
-  - Trigger
+  - Player
+  - Enemy
+  - CompanionAI
+  - Triggers
+  - StopMove
+  - 
+  - HeadTrack
+  - BodyPart
+  - BlockAIRayCast
+  - Pushable
+  - CoverPoint
   - 
   - 
   - 
@@ -47,8 +62,7 @@ TagManager:
   - 
   - 
   - 
-  - 
-  - 
+  - PostProcess
   m_SortingLayers:
   - name: Default
     uniqueID: 0
