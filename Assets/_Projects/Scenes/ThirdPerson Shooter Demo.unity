@@ -2418,7 +2418,8 @@ PrefabInstance:
     - target: {fileID: 7068713762524103652, guid: bc0f9dfb0499fa944ad4c75a58b1e8bf,
         type: 3}
       propertyPath: TextToShow
-      value: Armor/Clothing system included
+      value: "\u0421\u0438\u0441\u0442\u0435\u043C\u0430 \u0431\u0440\u043E\u043D\u0438/\u043E\u0434\u0435\u0436\u0434\u044B
+        \u0432\u043A\u043B\u044E\u0447\u0435\u043D\u0430"
       objectReference: {fileID: 0}
     - target: {fileID: 7319375007709701852, guid: bc0f9dfb0499fa944ad4c75a58b1e8bf,
         type: 3}
@@ -4387,6 +4388,56 @@ Transform:
   m_Children: []
   m_Father: {fileID: 324308056}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &754918627 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 3243631559774615308, guid: 3f9896eb08ade7b4ab7b111e294279d4,
+    type: 3}
+  m_PrefabInstance: {fileID: 6354978223529642142}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &754918629
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 754918627}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a79441f348de89743a2939f4d699eac1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_RenderShadows: 1
+  m_RequiresDepthTextureOption: 2
+  m_RequiresOpaqueTextureOption: 2
+  m_CameraType: 0
+  m_Cameras: []
+  m_RendererIndex: -1
+  m_VolumeLayerMask:
+    serializedVersion: 2
+    m_Bits: 1
+  m_VolumeTrigger: {fileID: 0}
+  m_VolumeFrameworkUpdateModeOption: 2
+  m_RenderPostProcessing: 1
+  m_Antialiasing: 0
+  m_AntialiasingQuality: 2
+  m_StopNaN: 0
+  m_Dithering: 0
+  m_ClearDepth: 1
+  m_AllowXRRendering: 1
+  m_AllowHDROutput: 1
+  m_UseScreenCoordOverride: 0
+  m_ScreenSizeOverride: {x: 0, y: 0, z: 0, w: 0}
+  m_ScreenCoordScaleBias: {x: 0, y: 0, z: 0, w: 0}
+  m_RequiresDepthTexture: 0
+  m_RequiresColorTexture: 0
+  m_Version: 2
+  m_TaaSettings:
+    m_Quality: 3
+    m_FrameInfluence: 0.1
+    m_JitterScale: 1
+    m_MipBias: 0
+    m_VarianceClampScale: 0.9
+    m_ContrastAdaptiveSharpening: 0
 --- !u!1001 &777257297
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -4984,7 +5035,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d915fb5a6f986464d8b487509a1b3232, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  TextToShow: Slide on high slopes.
+  TextToShow: "\u0421\u043A\u043E\u043B\u044C\u0437\u0438\u0442\u0435 \u043F\u043E
+    \u043A\u0440\u0443\u0442\u044B\u043C \u0441\u043A\u043B\u043E\u043D\u0430\u043C."
   PlayerTag: Player
   MessageFieldName: MenssagesPanel
 --- !u!54 &1008965924
@@ -5926,7 +5978,9 @@ PrefabInstance:
     - target: {fileID: 7068713762524103652, guid: bc0f9dfb0499fa944ad4c75a58b1e8bf,
         type: 3}
       propertyPath: TextToShow
-      value: You can easily create Melee Weapons
+      value: "\u0412\u044B \u043C\u043E\u0436\u0435\u0442\u0435 \u043B\u0435\u0433\u043A\u043E
+        \u0441\u043E\u0437\u0434\u0430\u0432\u0430\u0442\u044C \u043E\u0440\u0443\u0436\u0438\u0435
+        \u0431\u043B\u0438\u0436\u043D\u0435\u0433\u043E \u0431\u043E\u044F"
       objectReference: {fileID: 0}
     - target: {fileID: 7319375007709701852, guid: bc0f9dfb0499fa944ad4c75a58b1e8bf,
         type: 3}
@@ -8035,8 +8089,11 @@ PrefabInstance:
     - target: {fileID: 7068713762524103652, guid: bc0f9dfb0499fa944ad4c75a58b1e8bf,
         type: 3}
       propertyPath: TextToShow
-      value: It is possible to create Throwable Items such as stones, grenades, knives
-        e etc
+      value: "\u041C\u043E\u0436\u043D\u043E \u0441\u043E\u0437\u0434\u0430\u0432\u0430\u0442\u044C
+        \u043C\u0435\u0442\u0430\u0442\u0435\u043B\u044C\u043D\u044B\u0435 \u043F\u0440\u0435\u0434\u043C\u0435\u0442\u044B,
+        \u0442\u0430\u043A\u0438\u0435 \u043A\u0430\u043A \u043A\u0430\u043C\u043D\u0438,
+        \u0433\u0440\u0430\u043D\u0430\u0442\u044B, \u043D\u043E\u0436\u0438 \u0438
+        \u0442. \u0434."
       objectReference: {fileID: 0}
     - target: {fileID: 7319375007709701852, guid: bc0f9dfb0499fa944ad4c75a58b1e8bf,
         type: 3}
@@ -8933,7 +8990,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d915fb5a6f986464d8b487509a1b3232, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  TextToShow: Easily generate destructible objects with Fracture Tool.
+  TextToShow: "\u041B\u0435\u0433\u043A\u043E \u0441\u043E\u0437\u0434\u0430\u0432\u0430\u0439\u0442\u0435
+    \u0440\u0430\u0437\u0440\u0443\u0448\u0430\u0435\u043C\u044B\u0435 \u043E\u0431\u044A\u0435\u043A\u0442\u044B
+    \u0441 \u043F\u043E\u043C\u043E\u0449\u044C\u044E \u0438\u043D\u0441\u0442\u0440\u0443\u043C\u0435\u043D\u0442\u0430
+    Fracture Tool."
   PlayerTag: Player
   MessageFieldName: MenssagesPanel
 --- !u!54 &1725896560
@@ -9364,9 +9424,14 @@ PrefabInstance:
     - target: {fileID: 7068713762524103652, guid: bc0f9dfb0499fa944ad4c75a58b1e8bf,
         type: 3}
       propertyPath: TextToShow
-      value: the JU TPS has an advanced and easy-to-use Foot Placement system (Free
-        Integrated JU Foot Placement system). If you look at the character's feet,
-        they adapt perfectly to the terrain on which they are stepping.
+      value: "JU TPS \u043E\u0441\u043D\u0430\u0449\u0451\u043D \u043F\u0440\u043E\u0434\u0432\u0438\u043D\u0443\u0442\u043E\u0439
+        \u0438 \u043F\u0440\u043E\u0441\u0442\u043E\u0439 \u0432 \u0438\u0441\u043F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u043D\u0438\u0438
+        \u0441\u0438\u0441\u0442\u0435\u043C\u043E\u0439 \u0440\u0430\u0437\u043C\u0435\u0449\u0435\u043D\u0438\u044F
+        \u0441\u0442\u043E\u043F (Free Integrated JU Foot Placement). \u0412\u0437\u0433\u043B\u044F\u043D\u0438\u0442\u0435
+        \u043D\u0430 \u0441\u0442\u043E\u043F\u044B \u043F\u0435\u0440\u0441\u043E\u043D\u0430\u0436\u0430:
+        \u043E\u043D\u0438 \u0438\u0434\u0435\u0430\u043B\u044C\u043D\u043E \u0430\u0434\u0430\u043F\u0442\u0438\u0440\u0443\u044E\u0442\u0441\u044F
+        \u043A \u0440\u0435\u043B\u044C\u0435\u0444\u0443 \u043C\u0435\u0441\u0442\u043D\u043E\u0441\u0442\u0438,
+        \u043F\u043E \u043A\u043E\u0442\u043E\u0440\u043E\u0439 \u043E\u043D \u0441\u0442\u0443\u043F\u0430\u0435\u0442."
       objectReference: {fileID: 0}
     - target: {fileID: 7319375007709701852, guid: bc0f9dfb0499fa944ad4c75a58b1e8bf,
         type: 3}
@@ -9538,10 +9603,19 @@ PrefabInstance:
     - target: {fileID: 7068713762524103652, guid: bc0f9dfb0499fa944ad4c75a58b1e8bf,
         type: 3}
       propertyPath: TextToShow
-      value: The advanced Weapon/Item system of the JU TPS allows the creation of
-        almost any type of weapon, with Precision System, Scope System, Camera Approach
-        Sight, Procedural Recoil Animation, PickUp/Drop Item System, Dual Wielding
-        and etc.
+      value: "\u0423\u0441\u043E\u0432\u0435\u0440\u0448\u0435\u043D\u0441\u0442\u0432\u043E\u0432\u0430\u043D\u043D\u0430\u044F
+        \u0441\u0438\u0441\u0442\u0435\u043C\u0430 \u043E\u0440\u0443\u0436\u0438\u044F/\u043F\u0440\u0435\u0434\u043C\u0435\u0442\u043E\u0432
+        JU TPS \u043F\u043E\u0437\u0432\u043E\u043B\u044F\u0435\u0442 \u0441\u043E\u0437\u0434\u0430\u0432\u0430\u0442\u044C
+        \u043F\u0440\u0430\u043A\u0442\u0438\u0447\u0435\u0441\u043A\u0438 \u043B\u044E\u0431\u043E\u0439
+        \u0442\u0438\u043F \u043E\u0440\u0443\u0436\u0438\u044F \u0441 \u0441\u0438\u0441\u0442\u0435\u043C\u043E\u0439
+        \u0442\u043E\u0447\u043D\u043E\u0441\u0442\u0438, \u0441\u0438\u0441\u0442\u0435\u043C\u043E\u0439
+        \u043F\u0440\u0438\u0446\u0435\u043B\u0430, \u043F\u0440\u0438\u0446\u0435\u043B\u043E\u043C
+        \u043F\u0440\u0438\u0431\u043B\u0438\u0436\u0435\u043D\u0438\u044F \u043A\u0430\u043C\u0435\u0440\u044B,
+        \u043F\u0440\u043E\u0446\u0435\u0434\u0443\u0440\u043D\u043E\u0439 \u0430\u043D\u0438\u043C\u0430\u0446\u0438\u0435\u0439
+        \u043E\u0442\u0434\u0430\u0447\u0438, \u0441\u0438\u0441\u0442\u0435\u043C\u043E\u0439
+        \u043F\u043E\u0434\u0431\u043E\u0440\u0430/\u0431\u0440\u043E\u0441\u0430\u043D\u0438\u044F
+        \u043F\u0440\u0435\u0434\u043C\u0435\u0442\u043E\u0432, \u0434\u0432\u0443\u0440\u0443\u0447\u043D\u044B\u043C
+        \u043E\u0440\u0443\u0436\u0438\u0435\u043C \u0438 \u0442. \u0434."
       objectReference: {fileID: 0}
     - target: {fileID: 7319375007709701852, guid: bc0f9dfb0499fa944ad4c75a58b1e8bf,
         type: 3}
@@ -9656,7 +9730,10 @@ PrefabInstance:
     - target: {fileID: 7068713762524103652, guid: bc0f9dfb0499fa944ad4c75a58b1e8bf,
         type: 3}
       propertyPath: TextToShow
-      value: JU TPS has a vehicle system, with Car and Motorcycle physics
+      value: "\u0412 JU TPS \u0435\u0441\u0442\u044C \u0442\u0440\u0430\u043D\u0441\u043F\u043E\u0440\u0442\u043D\u0430\u044F
+        \u0441\u0438\u0441\u0442\u0435\u043C\u0430 \u0441 \u0444\u0438\u0437\u0438\u043A\u043E\u0439
+        \u0430\u0432\u0442\u043E\u043C\u043E\u0431\u0438\u043B\u0435\u0439 \u0438
+        \u043C\u043E\u0442\u043E\u0446\u0438\u043A\u043B\u043E\u0432."
       objectReference: {fileID: 0}
     - target: {fileID: 7319375007709701852, guid: bc0f9dfb0499fa944ad4c75a58b1e8bf,
         type: 3}
@@ -10996,6 +11073,19 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 50351490, guid: 9ce03ed22613ec94794c2173f187f0bf, type: 3}
+      propertyPath: m_Text
+      value: "\u042D\u0442\u043E \u043F\u043E\u043B\u0435 \u0441\u043E\u043E\u0431\u0449\u0435\u043D\u0438\u044F,
+        \u0432\u044B\u0437\u044B\u0432\u0430\u0435\u043C\u043E\u0435 \u0442\u0440\u0438\u0433\u0433\u0435\u0440\u0430\u043C\u0438.
+        \u041E\u043D\u043E \u043D\u0435\u043E\u0431\u044F\u0437\u0430\u0442\u0435\u043B\u044C\u043D\u043E.
+        \u0415\u0441\u043B\u0438 \u0432\u044B \u043D\u0435 \u0441\u043E\u0431\u0438\u0440\u0430\u0435\u0442\u0435\u0441\u044C
+        \u0435\u0433\u043E \u0438\u0441\u043F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u044C,
+        \u0435\u0433\u043E \u043C\u043E\u0436\u043D\u043E \u0443\u0434\u0430\u043B\u0438\u0442\u044C.\r\n\u0412\u0430\u043C
+        \u0442\u0430\u043A\u0436\u0435 \u043F\u043E\u0442\u0440\u0435\u0431\u0443\u0435\u0442\u0441\u044F
+        \u0443\u0434\u0430\u043B\u0438\u0442\u044C \u0442\u0440\u0438\u0433\u0433\u0435\u0440\u044B
+        \u0441 \u043F\u043E\u043C\u043E\u0449\u044C\u044E \u0441\u043A\u0440\u0438\u043F\u0442\u0430
+        \"UIMenssengerTrigger.cs\"."
+      objectReference: {fileID: 0}
     - target: {fileID: 188474677, guid: 9ce03ed22613ec94794c2173f187f0bf, type: 3}
       propertyPath: m_AnchorMax.x
       value: 0
@@ -12354,7 +12444,11 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 3243631559774615308, guid: 3f9896eb08ade7b4ab7b111e294279d4,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 754918629}
   m_SourcePrefab: {fileID: 100100000, guid: 3f9896eb08ade7b4ab7b111e294279d4, type: 3}
 --- !u!114 &6354978223529642143 stripped
 MonoBehaviour:
@@ -12432,6 +12526,15 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1746983654}
     m_Modifications:
+    - target: {fileID: 7068713762524103652, guid: bc0f9dfb0499fa944ad4c75a58b1e8bf,
+        type: 3}
+      propertyPath: TextToShow
+      value: "JU TPS \u043E\u0441\u043D\u0430\u0449\u0435\u043D\u0430 \u0441\u0438\u0441\u0442\u0435\u043C\u043E\u0439
+        \u0437\u0432\u0443\u043A\u0430 \u0448\u0430\u0433\u043E\u0432, \u043A\u043E\u0442\u043E\u0440\u0430\u044F
+        \u043F\u043E\u0434\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0435\u0442
+        \u0440\u0430\u0437\u043B\u0438\u0447\u043D\u044B\u0435 \u0442\u0438\u043F\u044B
+        \u043F\u043E\u0432\u0435\u0440\u0445\u043D\u043E\u0441\u0442\u0435\u0439."
+      objectReference: {fileID: 0}
     - target: {fileID: 7319375007709701852, guid: bc0f9dfb0499fa944ad4c75a58b1e8bf,
         type: 3}
       propertyPath: m_RootOrder
