@@ -4,8 +4,6 @@ using System.Linq;
 
 using UnityEngine;
 using UnityEngine.Events;
-
-using JUTPS.AI;
 using JUTPS.CharacterBrain;
 
 namespace JUTPS.AI

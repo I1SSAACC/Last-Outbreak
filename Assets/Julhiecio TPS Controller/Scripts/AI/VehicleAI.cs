@@ -1,25 +1,13 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.Events;
 using JUTPS.VehicleSystem;
-
 using JUTPSEditor.JUHeader;
-
 
 namespace JUTPS.AI
 {
-    [AddComponentMenu("JU TPS/AI/Vehicle AI")]
+    [AddComponentMenu(Constants.ComponentMenuNames.VehicleAI)]
     public class VehicleAI : MonoBehaviour
     {
-        private Vehicle vehicle;
-
-        //Used to update following state
-        private Vector3 oldPosition;
-
-        [HideInInspector] public int CurrentWayPointToFollow;
-        [HideInInspector] public Vector3[] PathToDestination;
-
         [Header("Destination Settings")]
         public bool EnablePathfinding;
         public float RecalculatePathRefreshRate = 1;
@@ -39,10 +27,17 @@ namespace JUTPS.AI
         public UnityEvent OnFollowing;
         public UnityEvent OnEnded;
         private bool Started, Following, Ended;
+
+        private Vehicle _vehicle;
+        private Vector3 _oldPosition;
+
+        private int _currentWayPointToFollow;
+        private Vector3[] _pathToDestination;
+
         void Start()
         {
             //Get vehicle component
-            vehicle = GetComponent<Vehicle>();
+            _vehicle = GetComponent<Vehicle>();
 
             if (EnablePathfinding || WaypointPath == null)
             {
@@ -50,7 +45,7 @@ namespace JUTPS.AI
             }
             else
             {
-                PathToDestination = WaypointPath.WaypointPathPositions;
+                _pathToDestination = WaypointPath.WaypointPathPositions;
             }
             InvokeRepeating("RecalculatePath", RecalculatePathRefreshRate, RecalculatePathRefreshRate);
         }
@@ -62,25 +57,25 @@ namespace JUTPS.AI
         public void RecalculatePath()
         {
             if (EnablePathfinding == false) return;
-            PathToDestination = JUPathFinder.CalculatePath(transform.position, Destination);
-            WaypointUtilities.DividePath(ref PathToDestination, 5);
+            _pathToDestination = JUPathFinder.CalculatePath(transform.position, Destination);
+            WaypointUtilities.DividePath(ref _pathToDestination, 5);
 
-            CurrentWayPointToFollow = 0;
+            _currentWayPointToFollow = 0;
         }
         private void Update()
         {
-            if (vehicle.IsOn == false || vehicle.GroundCheck.IsGrounded == false) return;
+            if (_vehicle.IsOn == false || _vehicle.GroundCheck.IsGrounded == false) return;
 
-            FrontCheck.Check(vehicle.transform, transform.forward);
-            FollowPath(ref PathToDestination, vehicle, DistanceToContinuePath, VehicleDesacelerationIntensity, ref CurrentWayPointToFollow, OnEndPath, FrontCheck.IsCollided, CheckNearestPointOnPath);
+            FrontCheck.Check(_vehicle.transform, transform.forward);
+            FollowPath(ref _pathToDestination, _vehicle, DistanceToContinuePath, VehicleDesacelerationIntensity, ref _currentWayPointToFollow, OnEndPath, FrontCheck.IsCollided, CheckNearestPointOnPath);
 
             if (EnablePathfinding)
             {
-                JUPathFinder.VisualizePath(PathToDestination);
+                JUPathFinder.VisualizePath(_pathToDestination);
             }
 
             //Following State
-            WaypointUtilities.FollowingState state = WaypointUtilities.GetPathFollowingState(transform, ref oldPosition, PathToDestination, CurrentWayPointToFollow, DistanceToContinuePath);
+            WaypointUtilities.FollowingState state = WaypointUtilities.GetPathFollowingState(transform, ref _oldPosition, _pathToDestination, _currentWayPointToFollow, DistanceToContinuePath);
 
             //Call State Events
             if (state == WaypointUtilities.FollowingState.Started && Started == false)
@@ -229,7 +224,7 @@ namespace JUTPS.AI
             }
             else
             {
-                if (PathToDestination.Length - 1 < CurrentWayPointToFollow) return;
+                if (_pathToDestination.Length - 1 < _currentWayPointToFollow) return;
 
                 if (randomTargetIndicatorLineColor == Color.clear)
                 {
@@ -237,12 +232,12 @@ namespace JUTPS.AI
                 }
 
                 Gizmos.color = randomTargetIndicatorLineColor;
-                Gizmos.DrawLine(transform.position, PathToDestination[CurrentWayPointToFollow]);
+                Gizmos.DrawLine(transform.position, _pathToDestination[_currentWayPointToFollow]);
 
                 //Target Indicator
                 var NewGUIStyle = JUTPSEditor.CustomEditorStyles.Toolbar();
                 NewGUIStyle.normal.textColor = randomTargetIndicatorLineColor;
-                UnityEditor.Handles.Label(PathToDestination[CurrentWayPointToFollow] + Vector3.up * 1, "Target", NewGUIStyle);
+                UnityEditor.Handles.Label(_pathToDestination[_currentWayPointToFollow] + Vector3.up * 1, "Target", NewGUIStyle);
             }
         }
 #endif
