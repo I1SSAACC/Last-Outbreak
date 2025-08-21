@@ -1,7 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-using JUTPS;
+﻿using UnityEngine;
 using JUTPS.ItemSystem;
 using JUTPS.WeaponSystem;
 using JUTPS.ArmorSystem;
@@ -9,7 +6,6 @@ using JUTPSEditor.JUHeader;
 
 namespace JUTPS.InventorySystem
 {
-
     [AddComponentMenu("JU TPS/Third Person System/Additionals/Inventory")]
     public class JUInventory : MonoBehaviour
     {

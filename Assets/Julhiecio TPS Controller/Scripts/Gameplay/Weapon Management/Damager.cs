@@ -29,7 +29,7 @@ namespace JUTPS
 
         [JUHeader("FX Settings")]
         public string[] TagsToDamage = { "Untagged", "Skin", "Player", "Enemy" };
-        public List<SurfaceAudiosWithFX> HitParticlesList = new List<SurfaceAudiosWithFX>();
+        public List<SurfaceAudiosWithFX> HitParticlesList = new();
         public AudioSource HitSoundsAudioSource;
 
         [HideInInspector] public bool Collided;
@@ -81,15 +81,14 @@ namespace JUTPS
  
             if (RaycastingMode == false || RaycastDistance == 0) return;
             //Debug.Log("Is raycasting mode active");
-            RaycastHit hit;
-            if (Physics.Raycast(transform.position, transform.forward, out hit, RaycastDistance, RaycastCollideWith))
+            if (Physics.Raycast(transform.position, transform.forward, out RaycastHit hit, RaycastDistance, RaycastCollideWith))
             {
                 //Debug.Log("raycasting somethings");
                 if (hit.collider.gameObject != oldHitedCollider)
                 {
                     for (int i = 0; i < TagsToDamage.Length; i++)
                     {
-                        if (hit.collider.transform.tag == TagsToDamage[i] && CanHit)
+                        if (hit.collider.transform.CompareTag(TagsToDamage[i]) && CanHit)
                         {
                             DoDamage(hit, null, Damage, HitParticlesList, HitSoundsAudioSource, AllRootGameobjectColliders);
                             Collided = true;
@@ -127,7 +126,7 @@ namespace JUTPS
         {
             for (int i = 0; i < TagsToDamage.Length; i++)
             {
-                if (collision.transform.tag == TagsToDamage[i] && CanHit)
+                if (collision.transform.CompareTag(TagsToDamage[i]) && CanHit)
                 {
                     if (collision.gameObject.layer == 9)
                     {
