@@ -1,6 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.Events;
 
 namespace JUTPS.AI
@@ -9,19 +7,16 @@ namespace JUTPS.AI
     public class PatrolAI : JUCharacterArtificialInteligenceBrain
     {
         private CharacterBrain.JUCharacterBrain targetJuCharacter;
-
         private Transform currentTarget;
-
         private float distanceFromDestination;
         private Vector3 fieldViewPosition;
-
         private Vector3 smoothedTargetPosition;
         private Vector3 closestWalkablePosition;
         private Vector3 lastVisiblePosition;
 
         [Header("Follow Settings")]
         public string[] TargetTags = new string[] { "Player" };
-        public FieldView FieldOfView = new FieldView(10, 60);
+        [SerializeField] private FieldView FieldOfView = new(10, 60);
         public LayerMask SensorLayerMask;
         public float StartRunningAtDistance = 5;
         public float StopDistance = 3;
@@ -55,11 +50,8 @@ namespace JUTPS.AI
         private bool StoppedSeeingTarget;
 
 
-        private void Start()
-        {
-            //Timed Tartget Check
+        private void Start() =>
             InvokeRepeating(nameof(CheckTargets), 0.5f, 0.5f);
-        }
 
         protected virtual void Update()
         {
@@ -161,6 +153,9 @@ namespace JUTPS.AI
             //Update target visibility
             UpdateCurrentTarget();
         }
+
+        public void SetFieldOfView(FieldView fieldView) =>
+            FieldOfView = fieldView;
 
         public void CheckTargets()
         {

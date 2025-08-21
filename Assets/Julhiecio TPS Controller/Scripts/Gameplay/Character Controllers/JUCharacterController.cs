@@ -36,7 +36,7 @@ namespace JUTPS
         public string[] PhysicalDamageIgnoreTags = new string[] { "Player", "Enemy", "Bones", "Wall", "Bullet" };
         void FixedUpdate()
         {
-            if (IsDead == true || DisableAllMove == true || JUPauseGame.Paused) { return; }
+            if (IsDead == true || DisableAllMove == true || JUPauseGame.IsPause) { return; }
             Movement();
             SlopeSlide();
             StepCorrectionMovement();
@@ -44,7 +44,7 @@ namespace JUTPS
 
         void Update()
         {
-            if (JUPauseGame.Paused) return;
+            if (JUPauseGame.IsPause) return;
 
             FootPlacementIKController();
 
