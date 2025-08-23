@@ -8368,8 +8368,8 @@ MonoBehaviour:
   JuTPSCharacter: {fileID: 0}
   ItemToEquipOnStart: -1
   EnableNextAndPreviousWeaponSwitch: 1
-  CustomNextWeaponKeyCode: 0
-  CustomPreviousWeaponKeycode: 0
+  CustomNextWeaponKeyCode: 321
+  CustomPreviousWeaponKeycode: 322
   EnableAlphaNumericWeaponSwitch: 1
   EnableMouseScrollWeaponSwitch: 1
   ScrollThreshold: 0.1
@@ -12389,7 +12389,7 @@ PrefabInstance:
     - target: {fileID: 8047097017070325310, guid: adb104378856a7748abb638ce946bec0,
         type: 3}
       propertyPath: Unlocked
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8047097017070325310, guid: adb104378856a7748abb638ce946bec0,
         type: 3}
