@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 
+using JUTPS.JUInputSystem;
 using JUTPS.CameraSystems;
 
 namespace JUTPS.CustomEditors
@@ -11,6 +12,12 @@ namespace JUTPS.CustomEditors
     public class TPSCameraControllerEditor : Editor
     {
         public bool CameraSettings, CameraAutoRotator, CameraRecoilSettings, CameraCustomState, CameraDefaultStates;
+
+        private TPSCameraController camTarget;
+        private void OnEnable()
+        {
+            camTarget = (TPSCameraController)target;
+        }
         public override void OnInspectorGUI()
         {
             //base.OnInspectorGUI();
@@ -18,20 +25,19 @@ namespace JUTPS.CustomEditors
             serializedObject.Update();
 
 
-            TPSCameraController c = (TPSCameraController)target;
 
             JUTPSEditor.CustomEditorUtilities.JUTPSTitle("Camera Controller");
 
 
 
             CameraSettings = GUILayout.Toggle(CameraSettings, "Camera Settings", JUTPSEditor.CustomEditorStyles.Toolbar());
-            CameraSettingsVariables(c);
+            CameraSettingsVariables(camTarget);
 
             CameraAutoRotator = GUILayout.Toggle(CameraAutoRotator, "Camera Auto Rotator", JUTPSEditor.CustomEditorStyles.Toolbar());
-            DrawAutoRotatorVariables(c);
+            DrawAutoRotatorVariables(camTarget);
 
             CameraRecoilSettings = GUILayout.Toggle(CameraRecoilSettings, "Camera Recoil Settings", JUTPSEditor.CustomEditorStyles.Toolbar());
-            DrawCameraRecoilSettings(c);
+            DrawCameraRecoilSettings(camTarget);
 
             CameraDefaultStates = GUILayout.Toggle(CameraDefaultStates, "Default Camera States", JUTPSEditor.CustomEditorStyles.Toolbar());
             DrawDefaultCameraStateSettings();
@@ -47,6 +53,8 @@ namespace JUTPS.CustomEditors
         {
             if (CameraSettings)
             {
+                serializedObject.FindProperty(nameof(target.InputAsset)).objectReferenceValue = EditorGUILayout.ObjectField("Input Asset", target.InputAsset, typeof(JUPlayerCharacterInputAsset), false);
+
                 serializedObject.FindProperty("TargetToFollow").objectReferenceValue =
                     EditorGUILayout.ObjectField("Target To Follow", target.TargetToFollow, typeof(Transform), true) as Transform;
 
@@ -66,7 +74,8 @@ namespace JUTPS.CustomEditors
 
                 serializedObject.FindProperty("GeneralSensibility").floatValue = EditorGUILayout.Slider("  General Sensibility", target.GeneralSensibility, 0, 5);
                 serializedObject.FindProperty("GeneralVerticalSensibility").floatValue = EditorGUILayout.Slider("  General Vertical Sensibility", target.GeneralVerticalSensibility, 0, 5);
-
+                serializedObject.FindProperty(nameof(target.InvertHorizontal)).boolValue = EditorGUILayout.Toggle("  Invert Horizontal", target.InvertHorizontal);
+                serializedObject.FindProperty(nameof(target.InvertVertical)).boolValue = EditorGUILayout.Toggle("  Invert Vertical", target.InvertVertical);
             }
         }
         public void DrawAutoRotatorVariables(TPSCameraController target)
@@ -130,10 +139,14 @@ namespace JUTPS.CustomEditors
 
                 GUILayout.BeginHorizontal();
                 GUILayout.Space(20);
-                var DefaultCamStates3 = serializedObject.FindProperty("AimModeCameraState");
-                EditorGUILayout.PropertyField(DefaultCamStates3);
+                EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(camTarget.AimModeCameraState)));
                 GUILayout.EndHorizontal();
 
+                //Weapon Aim Sway Options
+                GUILayout.BeginHorizontal();
+                GUILayout.Space(30);
+                EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(camTarget.AimingSwaySettings)));
+                GUILayout.EndHorizontal();
 
                 GUILayout.BeginHorizontal();
                 GUILayout.Space(20);

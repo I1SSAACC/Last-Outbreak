@@ -27,7 +27,7 @@ namespace JUTPS.InputEvents
             RemoveListenersToEvent();
         }
 
-        private void AddListenersToEvents()
+        public void AddListenersToEvents()
         {
             foreach (InputEvent action in Actions)
             {
@@ -36,7 +36,7 @@ namespace JUTPS.InputEvents
                 action.OnInputUp.AddListener(OnButtonsUp.Invoke);
             }
         }
-        private void RemoveListenersToEvent()
+        public void RemoveListenersToEvent()
         {
             foreach (InputEvent action in Actions)
             {

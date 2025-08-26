@@ -41,6 +41,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2507386506159117426}
   - component: {fileID: 2507386506159117425}
+  - component: {fileID: 895615016612312432}
   m_Layer: 0
   m_Name: FirstPerson Camera Controller
   m_TagString: Untagged
@@ -89,8 +90,10 @@ MonoBehaviour:
   LockCursor: 1
   HideCursor: 1
   CustomCameraStates: []
-  GeneralSensibility: 0.5
-  GeneralVerticalSensibility: 0.5
+  GeneralSensibility: 0.3
+  GeneralVerticalSensibility: 0.3
+  InvertHorizontal: 0
+  InvertVertical: 0
   rotX: 0
   rotY: 0
   rotxtarget: 0
@@ -98,6 +101,7 @@ MonoBehaviour:
   CameraRecoilReaction: 1
   RecoilRotateCamera: 1
   CameraRecoilSensibility: 0.5
+  InputAsset: {fileID: 11400000, guid: aca8a726812237f4697ed31b7f3e8818, type: 2}
   FPSCameraState:
     StateName: FPS Camera State
     Distance: 0
@@ -162,6 +166,19 @@ MonoBehaviour:
   VerticalIntensity: -0.3
   AimHorizontalIntensity: 1
   AimVerticalIntensity: 1
+--- !u!114 &895615016612312432
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2507386506159117424}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6fea81b23f2c33247a7457a083a939bb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  CameraController: {fileID: 2507386506159117425}
 --- !u!1 &2507386507541761415
 GameObject:
   m_ObjectHideFlags: 0

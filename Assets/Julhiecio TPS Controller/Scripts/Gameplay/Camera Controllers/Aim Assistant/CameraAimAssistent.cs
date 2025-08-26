@@ -59,14 +59,18 @@ namespace JUTPS.CameraSystems
         {
             ObjectInCameraCenter = targetCamera.GetObjectOnCameraCenter(DistanceToDetect, TargetLayer);
             if (ObjectInCameraCenter == null) return;
-            if (JUTPS.AI.JUCharacterArtificialInteligenceBrain.TagMatches(ObjectInCameraCenter.tag, AllTags))
-            {
-                Vector3 TargetRotationEuler = Quaternion.LookRotation((ObjectInCameraCenter.transform.position + transform.up * UpOffset - targetCamera.mCamera.transform.position).normalized).eulerAngles;
 
-                targetCamera.rotytarget = Mathf.LerpAngle(targetCamera.rotytarget, TargetRotationEuler.y, AssistentForce * Time.deltaTime);
-                targetCamera.rotxtarget = Mathf.LerpAngle(targetCamera.rotxtarget, TargetRotationEuler.x, AssistentForce * Time.deltaTime);
+            for (int i = 0; i < AllTags.Length; i++)
+            {
+                if (ObjectInCameraCenter.CompareTag(AllTags[i]))
+                {
+                    Vector3 TargetRotationEuler = Quaternion.LookRotation((ObjectInCameraCenter.transform.position + transform.up * UpOffset - targetCamera.mCamera.transform.position).normalized).eulerAngles;
+
+                    targetCamera.rotytarget = Mathf.LerpAngle(targetCamera.rotytarget, TargetRotationEuler.y, AssistentForce * Time.deltaTime);
+                    targetCamera.rotxtarget = Mathf.LerpAngle(targetCamera.rotxtarget, TargetRotationEuler.x, AssistentForce * Time.deltaTime);
+                    break;
+                }
             }
         }
     }
-
 }

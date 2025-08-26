@@ -101,7 +101,7 @@ namespace JUTPSEditor.JUAddonInstallationWizard
 
             wnd.titleContent = new GUIContent("JU Addon Installer", (Texture2D)Resources.Load("Editor Resources/Textures/PackageIcon"));
             const int width = 350;
-            const int height = 250;
+            const int height = 310;
 
             var x = (Screen.currentResolution.width - width) / 2;
             var y = (Screen.currentResolution.height - height) / 2;

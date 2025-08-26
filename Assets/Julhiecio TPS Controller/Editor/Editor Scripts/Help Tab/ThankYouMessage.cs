@@ -79,6 +79,7 @@ namespace JUTPS.CustomEditors
                 SupportThumb = JUTPSEditor.CustomEditorUtilities.GetImage("Thumb_Support");
                 TutoThumb = JUTPSEditor.CustomEditorUtilities.GetImage("Thumb_Tutorial");
                 YbThumb = JUTPSEditor.CustomEditorUtilities.GetImage("Thumb_Youtube");
+
                 if (Banner == null || DocThumb == null || SupportThumb == null || TutoThumb == null || YbThumb == null)
                 {
                     GUILayout.Label("Unable to find the resources images, please, if you deleted it, also delete the ThankYouMessage script in the folder /Editor/Editor Scripts/Help Tab/ThankYouMessage.cs");
@@ -118,28 +119,35 @@ namespace JUTPS.CustomEditors
             {
                 JUTPS.CustomEditors.HelpTabOptions.OpenDocumentation();
             }
-            //GUILayout.EndHorizontal();
-
-            //GUILayout.BeginHorizontal();
             if (GUILayout.Button(SupportThumb, GUILayout.Height(64), GUILayout.Width(128)))
             {
-                JUTPS.CustomEditors.HelpTabOptions.OpenSupportEmail();
+                JUTPS.CustomEditors.HelpTabOptions.OpenCommunity();
             }
             if (GUILayout.Button(YbThumb, GUILayout.Height(64), GUILayout.Width(128)))
             {
                 Application.OpenURL("https://www.youtube.com/c/JulhiecioGameDev");
             }
             GUILayout.EndHorizontal();
+
+
+
+
+
             if (GUILayout.Button("Open Discord Community", JUTPSEditor.CustomEditorStyles.MiniToolbar(), GUILayout.Height(30)))
             {
                 JUTPS.CustomEditors.HelpTabOptions.OpenCommunity();
             }
 
-            if (GUILayout.Button("[NEW] Import Addons", JUTPSEditor.CustomEditorStyles.MiniToolbar(), GUILayout.Height(30)))
+            if (GUILayout.Button("Import Addons", JUTPSEditor.CustomEditorStyles.MiniToolbar(), GUILayout.Height(30)))
             {
                 JUTPSEditor.JUAddonInstallationWizard.AddonInstallerWindowEditor.ShowWindow();
             }
+
+
+
             GUILayout.Space(20);
+
+
 
             GUILayout.BeginHorizontal();
             GUILayout.FlexibleSpace();

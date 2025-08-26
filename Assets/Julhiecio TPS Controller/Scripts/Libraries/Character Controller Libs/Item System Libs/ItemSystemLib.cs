@@ -10,49 +10,11 @@ using JUTPSEditor.JUHeader;
 
 namespace JUTPS.ItemSystem
 {
-    public class Item : MonoBehaviour
-    {
-		[JUHeader("Item Setting")]
-		public string ItemFilterTag = "General";
-		public Sprite ItemIcon;
-		public bool Unlocked;
-		public int ItemQuantity;
-		public int MaxItemQuantity = 1;
-		public string ItemName;
-		public int ItemSwitchID;
-
-        public virtual void UseItem()
-        {
-			if (ItemQuantity > 0)
-			{
-				RemoveItem();
-            }
-            else
-            {
-				return;
-            }
-        }
-        public virtual void RemoveItem()
-        {
-            ItemQuantity--;
-			ItemQuantity = Mathf.Clamp(ItemQuantity, 0, MaxItemQuantity);
-			if (ItemQuantity == 0) Unlocked = false;
-			
-		}
-		public virtual void AddItem()
-        {
-			ItemQuantity++;
-			ItemQuantity = Mathf.Clamp(ItemQuantity, 0, MaxItemQuantity);
-
-			if (ItemQuantity > 0) Unlocked = true;
-		}
-	}
-
-    public class HoldableItem : Item
-    {
+	public class JUHoldableItem : JUItem
+	{
 		[HideInInspector] public GameObject Owner;
 		[HideInInspector] public JUCharacterController TPSOwner;
-		[HideInInspector] public WeaponAimRotationCenter WeaponRotationCenter;
+		public WeaponAimRotationCenter WeaponRotationCenter;
 		[HideInInspector] public JUCameraController CamPivot;
 
 		[JUHeader("Use Setting")]
@@ -63,15 +25,14 @@ namespace JUTPS.ItemSystem
 		public GameObject ItemModelInBody;
 
 		public float TimeToUse;
-		[HideInInspector]public float CurrentTimeToUse;
-		public bool CanUseItem = true;
+		[HideInInspector] public float CurrentTimeToUse;
 		public bool IsUsingItem = false;
 
-		[JUHeader("Wielding")]		
+		[JUHeader("Wielding")]
 		public int ItemWieldPositionID;
 		public bool IsLeftHandItem;
-		public bool ForceDualWielding = false;		
-		public HoldableItem DualItemToWielding;
+		public bool ForceDualWielding = false;
+		public JUHoldableItem DualItemToWielding;
 
 		public ItemHoldingPose HoldPose;
 		public ItemSwitchPosition PushItemFrom;
@@ -85,16 +46,16 @@ namespace JUTPS.ItemSystem
 		public enum ItemHoldingPose { PistolTwoHands, PistolOneHand, Rifle, Free }
 
 		protected virtual void Start()
-        {
+		{
 			RefreshItemDependencies();
 			CurrentTimeToUse = TimeToUse;
 		}
-        private void Awake()
-        {
+		private void Awake()
+		{
 			RefreshItemDependencies();
-        }
-        public void RefreshItemDependencies()
-        {
+		}
+		public void RefreshItemDependencies()
+		{
 			if (Owner == null || TPSOwner == null)
 			{
 				if (transform.GetComponentInParent<JUCharacterController>() != null)
@@ -104,10 +65,10 @@ namespace JUTPS.ItemSystem
 					if (TPSOwner.anim == null) TPSOwner.anim = TPSOwner.GetComponent<Animator>();
 
 					if (TPSOwner.anim.GetBoneTransform(HumanBodyBones.LeftHand) == null)
-                    {
+					{
 						if (IsInvoking(nameof(RefreshItemDependencies)) == false) { Invoke(nameof(RefreshItemDependencies), 0.1f); }
 						return;
-                    }
+					}
 
 					IsLeftHandItem = (TPSOwner.anim.GetBoneTransform(HumanBodyBones.LeftHand).transform == transform.parent) ? true : false;
 
@@ -116,27 +77,27 @@ namespace JUTPS.ItemSystem
 				}
 			}
 		}
-        public virtual void Update()
-        {
-			if(CanUseItem == false)
-            {
+		public virtual void Update()
+		{
+			if (CanUseItem == false)
+			{
 				CurrentTimeToUse += Time.deltaTime;
-				if(CurrentTimeToUse >= TimeToUse)
-                {
+				if (CurrentTimeToUse >= TimeToUse)
+				{
 					CanUseItem = true;
 					CurrentTimeToUse = 0;
-                }
-            }
-        }
-        public override void UseItem()
+				}
+			}
+		}
+		public override void UseItem()
 		{
 			IsUsingItem = true;
 			CanUseItem = false;
-			
+
 			if (SingleUseItem)
 			{
 				ItemQuantity = 0;
-            }
+			}
 		}
 
 		public virtual void StopUseItem()
@@ -151,23 +112,23 @@ namespace JUTPS.ItemSystem
 			}
 		}
 		public virtual void StopUseItemDelayed(float delay)
-        {
+		{
 			if (IsInvoking("StopUseItem")) { CancelInvoke("StopUseItem"); return; }
 
 			Invoke("StopUseItem", delay);
-        }
+		}
 
 	}
-	public class JUGeneralHoldableItem : HoldableItem
-    {
+	public class JUGeneralHoldableItem : JUHoldableItem
+	{
 		public bool DisableCharacterFireModeOnStopUsing;
 		public UnityEvent OnUseItem;
 		public UnityEvent OnStopUsingItem;
 		protected bool OnUseItemEventCalled, OnStopUseItemEventCalled;
 
 
-        public override void UseItem()
-        {
+		public override void UseItem()
+		{
 			if (CanUseItem == false) return;
 			if (OnUseItemEventCalled == false)
 			{
@@ -178,21 +139,21 @@ namespace JUTPS.ItemSystem
 
 			base.UseItem();
 
-        }
-        public override void StopUseItem()
-        {
-            base.StopUseItem();
+		}
+		public override void StopUseItem()
+		{
+			base.StopUseItem();
 			if (OnStopUseItemEventCalled == false)
 			{
-				if(DisableCharacterFireModeOnStopUsing == true && TPSOwner != null)
-                {
+				if (DisableCharacterFireModeOnStopUsing == true && TPSOwner != null)
+				{
 					TPSOwner.FiringMode = false;
-                }
+				}
 				OnStopUsingItem.Invoke();
 				OnUseItemEventCalled = false;
 				OnStopUseItemEventCalled = true;
 			}
-        }
+		}
 
-    }
+	}
 }

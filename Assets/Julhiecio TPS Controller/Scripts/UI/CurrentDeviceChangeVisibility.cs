@@ -9,10 +9,10 @@ namespace JUTPS.CrossPlataform
     {
         public GameObject KeyboardObject, GamepadObject;
 
-        void Update()
+        void LateUpdate()
         {
-            KeyboardObject.SetActive(!JUInputManager.IsUsingGamepad);
             GamepadObject.SetActive(JUInputManager.IsUsingGamepad);
+            KeyboardObject.SetActive(!JUInputManager.IsUsingGamepad);
         }
     }
 }

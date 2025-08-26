@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8628158426545681886}
   - component: {fileID: 8628158426545678881}
+  - component: {fileID: -2933418676754541441}
   m_Layer: 0
   m_Name: Sidescroller Camera Controller
   m_TagString: Untagged
@@ -78,6 +79,8 @@ MonoBehaviour:
     SettingsIDName: Example State
   GeneralSensibility: 1
   GeneralVerticalSensibility: 1
+  InvertHorizontal: 0
+  InvertVertical: 0
   rotX: 0
   rotY: 0
   rotxtarget: 0
@@ -181,6 +184,19 @@ MonoBehaviour:
       serializedVersion: 2
       m_Bits: 0
     SettingsIDName: Dead Player Camera State
+--- !u!114 &-2933418676754541441
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8628158426545678880}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6fea81b23f2c33247a7457a083a939bb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  CameraController: {fileID: 8628158426545678881}
 --- !u!1 &8628158427148826912
 GameObject:
   m_ObjectHideFlags: 0

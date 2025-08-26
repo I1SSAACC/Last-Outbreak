@@ -53,6 +53,7 @@ namespace JUTPS.PhysicsScripts
                 {
                     CapsuleToResize.height = HeadFeetDistance() * StartHeight * HeightOffset;
                     CapsuleToResize.center = CenterOffset + transform.InverseTransformPoint(GetBodyCenter());
+                    CapsuleToResize.center = new Vector3(0, CapsuleToResize.center.y, 0);
                 }
 
 

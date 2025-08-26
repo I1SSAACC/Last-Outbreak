@@ -1,12 +1,13 @@
-﻿using UnityEngine;
-using JUTPS.ItemSystem;
-using JUTPS.ExtendedInverseKinematics;
-using JUTPS.VehicleSystem;
-using JUTPS.InventorySystem;
-using JUTPS.ActionScripts;
-using JUTPS.PhysicsScripts;
-using JUTPS.WeaponSystem;
+﻿using JUTPS.ActionScripts;
 using JUTPS.CameraSystems;
+using JUTPS.ExtendedInverseKinematics;
+using JUTPS.InventorySystem;
+using JUTPS.ItemSystem;
+using JUTPS.PhysicsScripts;
+using JUTPS.VehicleSystem;
+using JUTPS.WeaponSystem;
+using UnityEngine;
+using UnityEngine.Events;
 
 //using JU_INPUT_SYSTEM;
 
@@ -15,14 +16,19 @@ namespace JUTPS.CharacterBrain
 
     public class JUCharacterBrain : MonoBehaviour
     {
+        private Weapon _leftHandWeaponCache;
+        private Weapon _rightHandWeaponCache;
+        private MeleeWeapon _leftHandMeleeWeaponCache;
+        private MeleeWeapon _rightHandMeleeWeaponCache;
+        private DriveVehicles _driveVehicles;
+
         //ESSENTIALS
         [HideInInspector] public Vector3 UpDirection = Vector3.zero;
         [HideInInspector] public Quaternion UpOrientation;
         [HideInInspector] private Quaternion ForwardOrientation = Quaternion.identity;
         [HideInInspector] public Animator anim;
         [HideInInspector] public Rigidbody rb;
-        [HideInInspector] protected Collider coll;
-        protected Camera MyCamera;
+        [HideInInspector] public Collider coll;
         [HideInInspector] public JUCameraController MyPivotCamera;
         [HideInInspector] private Quaternion lastDirectionTransformRotation;
 
@@ -30,8 +36,7 @@ namespace JUTPS.CharacterBrain
         [HideInInspector] protected AdvancedRagdollController Ragdoller;
         [HideInInspector] protected JUFootPlacement FootPlacerIK;
         [HideInInspector] public JUHealth CharacterHealth;
-        [HideInInspector] public DriveVehicles DriveVehicleAbility;
-        [HideInInspector] public JUInventory Inventory;
+        public JUInventory Inventory;
         [HideInInspector] public Damager LeftHandDamager, RightHandDamager, LeftFootDamager, RightFootDamager;
 
         public enum MovementMode { Free, AwaysInFireMode, JuTpsClassic }
@@ -52,8 +57,11 @@ namespace JUTPS.CharacterBrain
         protected float LastX, LastY, LastVelMult;
 
         //STEP CORRECTION VARIABLES
-        [HideInInspector] public RaycastHit Step_Hit;
+        [HideInInspector] public RaycastHit _stepHit, FootStepHit;
         protected bool AdjustHeight;
+        private bool GoToStepPosition;
+        private Vector3 StartStepUpCharacterPosition, StepPosition;
+        private float GoingToStepTime;
 
         //MOVEMENT
         [Header("Movement Settings")]
@@ -61,6 +69,15 @@ namespace JUTPS.CharacterBrain
         public bool SetRigidbodyVelocity = true;
         public float FireModeMaxTime = 1;
         public float Speed = 3;
+
+        public float WalkSpeed = 0.5f;
+        public float CrouchSpeed = 0.4f;
+        public float RunSpeed = 1f;
+
+        public float SprintingSpeedMax = 3f;
+        public float SprintingAcceleration = 2;
+        public float SprintingDeceleration = 0.6f;
+
         public float RotationSpeed = 2;
         public float JumpForce = 3f;
         public float StoppingSpeed = 2;
@@ -76,8 +93,10 @@ namespace JUTPS.CharacterBrain
         //RUN IMPULSE / SPRINT
         public bool SprintingSkill = true;
         protected bool CanSprint = true;
-        protected bool MaxSprintSpeed = false;
-        protected float SprintSpeedDecrease;
+        protected bool ReachedMaxSprintSpeed = false;
+        protected float CurrentSprintSpeedIntensity;
+        public bool SprintOnRunButton = false;
+        public bool UnlimitedSprintDuration = false;
 
         //GROUND ANGLE DESACELERATION
         public bool GroundAngleDesaceleration = true;
@@ -92,8 +111,54 @@ namespace JUTPS.CharacterBrain
         public bool RootMotionRotation = false;
         public Vector3 RootMotionDeltaPosition;
 
-        [Header("Death Options")]
+
+        [Header("Default Event Options")]
         public bool RagdollWhenDie;
+        //EVENTS
+        public JUCharacterEvents Events;
+
+        [System.Serializable]
+        public struct JUCharacterEvents
+        {
+            public UnityEvent OnDeath, OnRessurect, OnRun, OnSprinting, OnRoll, OnJump, OnCrouch, OnGetUp, OnStartMoving, OnIdle, OnEnterFireMode, OnExitFireMode, OnPunch;
+            private bool calledRun, calledOnSprinting, calledStartMoving, calledStopMoving, calledOnFireMode, calledOnExitFireMode;
+            public void UpdateRuntimeEventsCallbacks(JUCharacterBrain juchar)
+            {
+                //Run Event
+                if (juchar.IsRunning && calledRun == false) { OnRun.Invoke(); } else if (calledRun == true) { calledRun = false; }
+                //Sprint Event
+                if (juchar.IsSprinting && calledOnSprinting == false) { OnSprinting.Invoke(); } else if (calledOnSprinting == true) { calledOnSprinting = false; }
+                //Start Move Event
+                if (juchar.IsMoving && calledStartMoving == false) { OnStartMoving.Invoke(); } else if (calledStartMoving == true) { calledStartMoving = false; }
+                //Stop Move/Idle Event
+                if (juchar.IsMoving == false && calledStopMoving == false) { OnIdle.Invoke(); } else if (calledStopMoving == true) { calledStopMoving = false; }
+                //Fire Mode Event
+                if (juchar.FiringMode && calledOnFireMode == false) { OnEnterFireMode.Invoke(); } else if (calledOnFireMode == true) { calledOnFireMode = false; }
+                //Exit Fire Mode Event
+                if (juchar.FiringMode == false && calledOnExitFireMode == false) { OnExitFireMode.Invoke(); } else if (calledOnExitFireMode == true) { calledOnExitFireMode = false; }
+            }
+            public void SetEventListeners(JUCharacterBrain juchar)
+            {
+                OnDeath.AddListener(juchar.KillCharacter);
+                OnRessurect.AddListener(juchar.RessurectCharacter);
+                OnRoll.AddListener(juchar._Roll);
+                OnJump.AddListener(juchar._Jump);
+                OnCrouch.AddListener(juchar._Crouch);
+                OnGetUp.AddListener(juchar._GetUp);
+                OnPunch.AddListener(juchar._DoPunch);
+            }
+            public void RemoveEventListeners(JUCharacterBrain juchar)
+            {
+                OnDeath.RemoveListener(juchar.KillCharacter);
+                OnRessurect.RemoveListener(juchar.RessurectCharacter);
+                OnRoll.RemoveListener(juchar._Roll);
+                OnJump.RemoveListener(juchar._Jump);
+                OnCrouch.RemoveListener(juchar._Crouch);
+                OnGetUp.RemoveListener(juchar._GetUp);
+                OnPunch.RemoveListener(juchar._DoPunch);
+
+            }
+        }
 
         [Header("Ground Check Settings")]
         public LayerMask WhatIsGround;
@@ -113,6 +178,10 @@ namespace JUTPS.CharacterBrain
         public float FootstepHeight = 0.4f;
         public float ForwardStepOffset = 0.6f;
         public float StepHeight = 0.02f;
+        public bool EnableUngroundedStepUp = true;
+        public float UngroundedStepUpSpeed = 4;
+        public float UngroundedStepUpRayDistance = 0.1f;
+        public float StoppingTimeOnStepPosition = 0.5f;
 
         [Header("Animator Parameters")]
         public JUAnimatorParameters AnimatorParameters;
@@ -122,14 +191,13 @@ namespace JUTPS.CharacterBrain
         public GameObject PivotItemRotation;
         public WeaponAimRotationCenter WeaponHoldingPositions;
 
-        [HideInInspector] public HoldableItem HoldableItemInUseRightHand, HoldableItemInUseLeftHand;
-        [HideInInspector] public Weapon WeaponInUseRightHand, WeaponInUseLeftHand;
-        [HideInInspector] public MeleeWeapon MeleeWeaponInUseRightHand, MeleeWeaponInUseLeftHand;
+        [HideInInspector] public JUHoldableItem HoldableItemInUseRightHand, HoldableItemInUseLeftHand;
 
         protected int CurrentItemIDRightHand = -1, CurrentItemIDLeftHand = -1; // [-1] = Hand
+        [Header("Fire Mode Settings")]
         public PressAimMode AimMode;
+        public float FireModeWalkSpeed = 0.5f, FireModeRunSpeed = 1.3f, FireModeCrouchSpeed = 0.5f;
         public enum PressAimMode { HoldToAim, OnePressToAim }
-
 
         //Animator Layers Weight
         [HideInInspector] protected float IsArmedWeight;
@@ -138,28 +206,23 @@ namespace JUTPS.CharacterBrain
         [HideInInspector] protected float RightArmLayerWeight, LeftArmLayerWeight;
         [HideInInspector] protected float WeaponSwitchLayerWeight;
         [HideInInspector] protected float WeaponSwitchingCurrentTime;
-        //[HideInInspector] protected RaycastHit CrosshairHit;
-
 
         //Hand IK Targets
         [HideInInspector] public Transform IKPositionRightHand;
         [HideInInspector] public Transform IKPositionLeftHand;
         [HideInInspector] private Transform RightHandIKPositionTarget;
         [HideInInspector] private Transform LeftHandIKPositionTarget;
-
+        //Bones
         [HideInInspector] public Transform HumanoidSpine;
+        [HideInInspector] public Transform RightFootBone, LeftFootBone;
 
         protected float LookWeightIK = 0;
         protected float ArmsWeightIK = 0;
         public float LeftHandWeightIK = 0;
         public float RightHandWeightIK = 0;
+
         //FIRE MODE Timer
         [HideInInspector] public float CurrentTimeToDisableFireMode;
-
-        //[Header("Pick Up Weapons")]
-        //protected LayerMask WeaponLayer;
-
-        public Vehicle VehicleInArea;
 
         public Collider[] CharacterHitBoxes;
 
@@ -187,16 +250,130 @@ namespace JUTPS.CharacterBrain
         public bool ToPickupItem;
         public bool IsRolling;
         public bool IsRagdolled;
-        public bool IsDriving;
-        public bool ToEnterVehicle;
+
         public bool UsedItem;
         public bool IsReloading;
         public bool WallAHead;
         public bool IsWeaponSwitching;
         public bool InverseKinematics = true;
-        public bool IsArtificialIntelligence = false;
+
+        /// <summary>
+        /// Return true if is the main player character.
+        /// </summary>
+        public bool IsPlayer
+        {
+            get
+            {
+                return gameObject.CompareTag("Player");
+            }
+        }
+
+        /// <summary>
+        /// The current weapon in use on right hand.
+        /// </summary>
+        public Weapon RightHandWeapon
+        {
+            get
+            {
+                if (_rightHandWeaponCache != HoldableItemInUseRightHand)
+                {
+                    _rightHandWeaponCache = HoldableItemInUseRightHand ? HoldableItemInUseRightHand as Weapon : null;
+                }
+
+                return _rightHandWeaponCache;
+            }
+        }
+
+        /// <summary>
+        /// The current weapon in use on left hand.
+        /// </summary>
+        public Weapon LeftHandWeapon
+        {
+            get
+            {
+                if (_leftHandWeaponCache != HoldableItemInUseLeftHand)
+                {
+                    _leftHandWeaponCache = HoldableItemInUseLeftHand ? HoldableItemInUseLeftHand as Weapon : null;
+                }
+
+                return _leftHandWeaponCache;
+            }
+        }
+
+        /// <summary>
+        /// The current melee weapon in use on right hand.
+        /// </summary>
+        public MeleeWeapon RightHandMeleeWeapon
+        {
+            get
+            {
+                if (_rightHandMeleeWeaponCache != HoldableItemInUseRightHand)
+                {
+                    _rightHandMeleeWeaponCache = HoldableItemInUseRightHand ? HoldableItemInUseRightHand as MeleeWeapon : null;
+                }
+
+                return _rightHandMeleeWeaponCache;
+            }
+        }
+
+        /// <summary>
+        /// The current melee weapon in use on left hand.
+        /// </summary>
+        public MeleeWeapon LeftHandMeleeWeapon
+        {
+            get
+            {
+                if (_leftHandMeleeWeaponCache != HoldableItemInUseLeftHand)
+                {
+                    _leftHandMeleeWeaponCache = HoldableItemInUseLeftHand ? HoldableItemInUseLeftHand as MeleeWeapon : null;
+                }
+
+                return _leftHandMeleeWeaponCache;
+            }
+        }
+
+        /// Return true if the character is driving a vehicle.
+        /// Add a <see cref="DriveVehicles"/> to the character to able drive vehicles.
+        /// </summary>
+        public bool IsDriving
+        {
+            get
+            {
+                if (DriveVehicles)
+                {
+                    return DriveVehicles.IsDriving;
+                }
+
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// The component of the character that allow to drive vehicles.
+        /// </summary>
+        public DriveVehicles DriveVehicles
+        {
+            get
+            {
+                if (!_driveVehicles)
+                {
+                    _driveVehicles = GetComponent<DriveVehicles>();
+                }
+
+                return _driveVehicles;
+            }
+        }
+
         #region Unity Standard Functions
 
+        private void OnEnable()
+        {
+            Events.SetEventListeners(this);
+        }
+        private void OnDisable()
+        {
+            Events.RemoveEventListeners(this);
+        }
         private void OnDestroy()
         {
             if (PivotItemRotation != null) Destroy(PivotItemRotation);
@@ -248,15 +425,40 @@ namespace JUTPS.CharacterBrain
 
             // Start with no item selected
             CurrentItemIDRightHand = -1;
-            WeaponInUseRightHand = null;
             HoldableItemInUseRightHand = null;
 
-            // Get Camera references
-            MyPivotCamera = (IsArtificialIntelligence == false) ? FindFirstObjectByType<JUCameraController>() : null;
-            MyCamera = (MyPivotCamera != null && IsArtificialIntelligence == false) ? MyPivotCamera.mCamera : null;
+            if (IsPlayer)
+            {
+                MyPivotCamera = FindObjectOfType<JUCameraController>();
+            }
 
             // Get last character spine bone
             if (HumanoidSpine == null) { HumanoidSpine = anim.GetLastSpineBone(); }
+
+            // Get Foot Bones
+            if (LeftFootBone == null || RightFootBone == null)
+            {
+                LeftFootBone = anim.GetBoneTransform(HumanBodyBones.LeftFoot);
+                RightFootBone = anim.GetBoneTransform(HumanBodyBones.RightFoot);
+            }
+
+            //Get Damagers
+            if (LeftHandDamager == null)
+            {
+                LeftHandDamager = GetLeftHandDamager();
+            }
+            if (RightHandDamager == null)
+            {
+                RightHandDamager = GetRightHandDamager();
+            }
+            if (LeftFootDamager == null)
+            {
+                LeftFootDamager = GetLeftFootDamager();
+            }
+            if (RightFootDamager == null)
+            {
+                RightFootDamager = GetRightFootDamager();
+            }
 
             //Get JUHealth
             if (TryGetComponent(out JUHealth health)) { CharacterHealth = health; CharacterHealth.OnDeath.AddListener(DisableDamagers); }
@@ -265,38 +467,15 @@ namespace JUTPS.CharacterBrain
             if (TryGetComponent(out JUInventory juInventory)) { Inventory = juInventory; }
 
             // Get Ragdoller
-            if (TryGetComponent(out AdvancedRagdollController ragdollerController))
-            {
-                Ragdoller = ragdollerController;
-            }
+            if (TryGetComponent(out AdvancedRagdollController ragdollerController)) { Ragdoller = ragdollerController; }
 
-            // Get Foot Placer
+            // Get JU Foot Placer
             if (TryGetComponent(out JUFootPlacement footplacer)) { FootPlacerIK = footplacer; }
+        }
 
-            // Get Drive Vehicle Ability
-            if (TryGetComponent(out DriveVehicles driver)) { DriveVehicleAbility = driver; }
+        protected virtual void Start()
+        {
 
-            //Get Damagers
-            if (LeftHandDamager == null)
-            {
-                LeftHandDamager = GetLeftHandDamager();
-                //if(LeftHandDamager != null) LeftHandDamager.gameObject.SetActive(false);
-            }
-            if (RightHandDamager == null)
-            {
-                RightHandDamager = GetRightHandDamager();
-                //if (RightHandDamager != null) RightHandDamager.gameObject.SetActive(false);
-            }
-            if (LeftFootDamager == null)
-            {
-                LeftFootDamager = GetLeftFootDamager();
-                //if (LeftFootDamager != null) LeftFootDamager.gameObject.SetActive(false);
-            }
-            if (RightFootDamager == null)
-            {
-                RightFootDamager = GetRightFootDamager();
-                //if (RightFootDamager != null) RightFootDamager.gameObject.SetActive(false);
-            }
         }
 
         #endregion
@@ -306,49 +485,53 @@ namespace JUTPS.CharacterBrain
         #region Utilities Functions
         public Vector3 GetLookPosition()
         {
-            if (MyCamera == null)
+            Vector3 position = LookAtPosition;
+
+            if (MyPivotCamera && MyPivotCamera.mCamera)
             {
-                return LookAtPosition;
-            }
-            else
-            {
-                if (LookAtPosition != Vector3.zero)
+                if (position != Vector3.zero)
                 {
-                    return LookAtPosition;
+                    return position;
                 }
-                else
-                {
-                    return MyCamera.transform.position + MyCamera.transform.forward * 100;
-                }
+
+                position = MyPivotCamera.mCamera.transform.position + (MyPivotCamera.mCamera.transform.forward * 100);
             }
+
+            return position;
         }
         public Vector3 GetLookDirectionEulerAngles()
         {
-            Vector3 lookdir = Quaternion.LookRotation(LookAtPosition - PivotItemRotation.transform.position).eulerAngles;
-
-            if (MyCamera != null && LookAtPosition == Vector3.zero)
+            if (MyPivotCamera && MyPivotCamera.mCamera && LookAtPosition == Vector3.zero)
             {
-                lookdir = MyCamera.transform.eulerAngles;
+                return MyPivotCamera.mCamera.transform.eulerAngles;
             }
 
-            return lookdir;
+            Vector3 direction = LookAtPosition - PivotItemRotation.transform.position;
+
+            if (direction.magnitude < 0.01f)
+            {
+                return Vector3.zero;
+            }
+
+            direction /= direction.magnitude;
+            return Quaternion.LookRotation(direction).eulerAngles;
         }
         public Vector3 GetCurrentWeaponLookDirection(bool RightHand = true)
         {
             Vector3 direction = Vector3.up;
             if (RightHand)
             {
-                if (WeaponInUseRightHand != null)
+                if (RightHandWeapon != null)
                 {
-                    Vector3 shootDirectionRight = (GetLookPosition() - WeaponInUseRightHand.Shoot_Position.position).normalized;
+                    Vector3 shootDirectionRight = (GetLookPosition() - RightHandWeapon.Shoot_Position.position).normalized;
                     direction = shootDirectionRight;
                 }
             }
             else
             {
-                if (WeaponInUseLeftHand != null)
+                if (LeftHandWeapon != null)
                 {
-                    Vector3 shootDirectionLeft = (GetLookPosition() - WeaponInUseLeftHand.Shoot_Position.position).normalized;
+                    Vector3 shootDirectionLeft = (GetLookPosition() - LeftHandWeapon.Shoot_Position.position).normalized;
                     direction = shootDirectionLeft;
                 }
             }
@@ -361,12 +544,12 @@ namespace JUTPS.CharacterBrain
         }
         public Quaternion GetForwardOrientation()
         {
-            Quaternion orientation = (MyCamera == null || ForwardOrientation != Quaternion.identity) ? ForwardOrientation : MyCamera.transform.rotation;
+            Quaternion orientation = (!MyPivotCamera || ForwardOrientation != Quaternion.identity) ? ForwardOrientation : MyPivotCamera.mCamera.transform.rotation;
 
-            if (IsArtificialIntelligence == true && MyPivotCamera != null)
+            if (!IsPlayer && MyPivotCamera != null)
             {
                 MyPivotCamera = null;
-                MyCamera = null;
+                MyPivotCamera = null;
                 orientation = ForwardOrientation;
             }
 
@@ -405,74 +588,39 @@ namespace JUTPS.CharacterBrain
             Transform spine = anim.GetBoneTransform(HumanBodyBones.Head).parent.parent;
             return spine;
         }
+
         private Damager GetRightHandDamager()
         {
             if (RightHandDamager != null) return RightHandDamager;
 
-            Damager rDamage = null;
-            Damager[] damagers = GetComponentsInChildren<Damager>();
-
-            foreach (Damager targetdamager in damagers)
-            {
-                if (targetdamager.transform.parent == anim.GetBoneTransform(HumanBodyBones.RightLowerArm))
-                {
-                    rDamage = targetdamager;
-                }
-            }
-
-            return rDamage;
+            Transform arm = anim.GetBoneTransform(HumanBodyBones.RightLowerArm);
+            return arm.GetComponentInChildren<Damager>();
         }
+
         private Damager GetLeftHandDamager()
         {
             if (LeftHandDamager != null) return LeftHandDamager;
 
-            Damager lDamage = null;
-            Damager[] damagers = GetComponentsInChildren<Damager>();
-
-            foreach (Damager targetdamager in damagers)
-            {
-                if (targetdamager.transform.parent == anim.GetBoneTransform(HumanBodyBones.LeftLowerArm))
-                {
-                    lDamage = targetdamager;
-                }
-            }
-
-            return lDamage;
+            Transform arm = anim.GetBoneTransform(HumanBodyBones.LeftLowerArm);
+            return arm.GetComponentInChildren<Damager>();
         }
+
         private Damager GetLeftFootDamager()
         {
             if (LeftFootDamager != null) return LeftFootDamager;
 
-            Damager lDamage = null;
-            Damager[] damagers = GetComponentsInChildren<Damager>();
-
-            foreach (Damager targetdamager in damagers)
-            {
-                if (targetdamager.transform.parent == anim.GetBoneTransform(HumanBodyBones.LeftUpperLeg))
-                {
-                    lDamage = targetdamager;
-                }
-            }
-
-            return lDamage;
+            Transform leg = anim.GetBoneTransform(HumanBodyBones.LeftLowerLeg);
+            return leg.GetComponentInChildren<Damager>();
         }
+
         private Damager GetRightFootDamager()
         {
             if (RightFootDamager != null) return RightFootDamager;
 
-            Damager lDamage = null;
-            Damager[] damagers = GetComponentsInChildren<Damager>();
-
-            foreach (Damager targetdamager in damagers)
-            {
-                if (targetdamager.transform.parent == anim.GetBoneTransform(HumanBodyBones.RightUpperLeg))
-                {
-                    lDamage = targetdamager;
-                }
-            }
-
-            return lDamage;
+            Transform leg = anim.GetBoneTransform(HumanBodyBones.RightLowerLeg);
+            return leg.GetComponentInChildren<Damager>();
         }
+
         public void DisableDamagers()
         {
             if (LeftFootDamager != null) LeftFootDamager.gameObject.SetActive(false);
@@ -597,14 +745,14 @@ namespace JUTPS.CharacterBrain
                     DesiredEulerAngles.y = Mathf.MoveTowardsAngle(DesiredEulerAngles.y, DirectionTransform.eulerAngles.y, (IsProne || IsCrouched ? 0.5f : 1) * 100 * RotationSpeed * Time.deltaTime);
                 }
             }
-
-            bool BlockFireModeCondition = ((HoldableItemInUseRightHand != null) && HoldableItemInUseRightHand.BlockFireMode);
+            bool BlockFireModeCondition = ((HoldableItemInUseRightHand != null) ? HoldableItemInUseRightHand.BlockFireMode : false);
             //Firing Mode Rotation
             if (FiringMode && BlockFireModeCondition == false && IsRolling == false) // >>> Firing Mode Rotation
             {
-                if (MyCamera != null)
+                if (MyPivotCamera != null)
                 {
-                    LookRotationToAimPosition((LookAtPosition != Vector3.zero) ? LookAtPosition : MyCamera.transform.position + MyCamera.transform.forward * 100, RotationSpeed, UpOrientation * Vector3.up);
+                    Vector3 aimPosition = LookAtPosition != Vector3.zero ? LookAtPosition : MyPivotCamera.mCamera.transform.position + (MyPivotCamera.mCamera.transform.forward * 100);
+                    LookRotationToAimPosition(aimPosition, RotationSpeed, UpOrientation * Vector3.up);
                 }
                 else
                 {
@@ -717,16 +865,19 @@ namespace JUTPS.CharacterBrain
             }
             else
             {
-                transform.Translate(0, -0.2f * Time.deltaTime, 0);
-                if (SetRigidbodyVelocity)
-                {
-                    if (IsMoving) rb.AddForce(DirectionTransform.forward * AirInfluenceControll * 10, ForceMode.Force);
+                transform.Translate(0, -1f * Time.deltaTime, 0);
+                //if (SetRigidbodyVelocity)
+                //{
+                //    if (IsMoving) rb.AddForce(DirectionTransform.forward * AirInfluenceControll * 10, ForceMode.Force);
 
-                }
-                else
+                //}
+                //else
+                //{
+                if (IsMoving)
                 {
-                    if (IsMoving) transform.Translate(DirectionTransform.forward * AirInfluenceControll / 10 * Time.deltaTime, Space.World);
+                    transform.Translate(DirectionTransform.forward * AirInfluenceControll / 2 * Time.deltaTime, Space.World);
                 }
+                //}
             }
         }
         protected virtual void LookRotationToAimPosition(Vector3 Position = default(Vector3), float RotationSpeed = 10, Vector3 Up_Direction = default(Vector3))
@@ -771,25 +922,30 @@ namespace JUTPS.CharacterBrain
 
             IsArmedWeight = Mathf.Lerp(IsArmedWeight, 1, 5 * Time.deltaTime);
 
-
-            if (IsRunning == true && IsSprinting == false && WallAHead == false && IsGrounded == true && IsMoving == true)
+            //Running Firing Mode State
+            if (IsRunning == true && IsSprinting == false && IsCrouched == false && WallAHead == false && IsGrounded == true && IsMoving == true)
             {
-                VelocityMultiplier = Mathf.Lerp(VelocityMultiplier, 1.3f - GroundAngleDesacelerationValue(), 5 * Time.deltaTime);
+                VelocityMultiplier = Mathf.Lerp(VelocityMultiplier, FireModeRunSpeed - GroundAngleDesacelerationValue(), 5 * Time.deltaTime);
             }
-            if (IsRunning == false && IsSprinting == false && WallAHead == false && IsGrounded == true && IsMoving == true)
+            //Walking Firing Mode State
+            if (IsRunning == false && IsSprinting == false && IsCrouched == false && WallAHead == false && IsGrounded == true && IsMoving == true)
             {
-                VelocityMultiplier = Mathf.Lerp(VelocityMultiplier, 0.5f - GroundAngleDesacelerationValue(), 5 * Time.deltaTime);
+                VelocityMultiplier = Mathf.Lerp(VelocityMultiplier, FireModeWalkSpeed - GroundAngleDesacelerationValue(), 5 * Time.deltaTime);
             }
-
+            //Crouch Fire Mode State
+            if (IsRunning == false && IsSprinting == false && IsCrouched == true && WallAHead == false && IsGrounded == true && IsMoving == true)
+            {
+                VelocityMultiplier = Mathf.Lerp(VelocityMultiplier, FireModeCrouchSpeed - GroundAngleDesacelerationValue(), 5 * Time.deltaTime);
+            }
             if (IsMoving == false)
             {
                 VelocityMultiplier = Mathf.Lerp(VelocityMultiplier, 0f, 5 * Time.deltaTime);
             }
 
             //Disable Run Impulse / Sprinting
-            MaxSprintSpeed = false;
+            ReachedMaxSprintSpeed = false;
             CanSprint = true;
-            SprintSpeedDecrease = 0;
+            CurrentSprintSpeedIntensity = 0;
             IsSprinting = false;
         }
         protected virtual void DoFreeMovement(bool FiringMode)
@@ -815,18 +971,32 @@ namespace JUTPS.CharacterBrain
             // Locomotion Speed Controller
             if (IsMoving && IsMeleeAttacking == false && IsPunching == false)
             {
-                //Run State
-                if (IsRunning == true && WallAHead == false)
+                // >>> Walk State
+                if (IsRunning == false && IsSprinting == false && IsCrouched == false && WallAHead == false)
                 {
-                    VelocityMultiplier = Mathf.Lerp(VelocityMultiplier, 1.4f - GroundAngleDesacelerationValue(), 6 * Time.deltaTime);
-                }
-                // Walk State
-                else if (WallAHead == false)
-                {
-                    VelocityMultiplier = Mathf.Lerp(VelocityMultiplier, 0.5f - GroundAngleDesacelerationValue(), 6 * Time.deltaTime);
+                    VelocityMultiplier = Mathf.Lerp(VelocityMultiplier, WalkSpeed - GroundAngleDesacelerationValue(), 6 * Time.deltaTime);
                     IsSprinting = false;
-                    SprintSpeedDecrease = Mathf.Lerp(SprintSpeedDecrease, 0, 6 * Time.deltaTime);
                 }
+                // Crouch State
+                if (IsCrouched == true && IsRunning == false && WallAHead == false)
+                {
+                    VelocityMultiplier = Mathf.Lerp(VelocityMultiplier, CrouchSpeed - GroundAngleDesacelerationValue(), 6 * Time.deltaTime);
+                    IsSprinting = false;
+                }
+
+                // >>> Fast Run/Sprint State
+                if (IsRunning == true && IsSprinting == true && IsCrouched == false && WallAHead == false)
+                {
+                    VelocityMultiplier = Mathf.Lerp(VelocityMultiplier, RunSpeed - GroundAngleDesacelerationValue(), 6 * Time.deltaTime);
+                }
+
+                // >>> Slow Run State
+                if (IsRunning == true && IsSprinting == false && IsCrouched == false && WallAHead == false)
+                {
+                    VelocityMultiplier = Mathf.Lerp(VelocityMultiplier, RunSpeed - GroundAngleDesacelerationValue(), 6 * Time.deltaTime);
+                    IsSprinting = false;
+                }
+
             }
             else
             {
@@ -837,26 +1007,33 @@ namespace JUTPS.CharacterBrain
                 }
                 IsRunning = false;
                 IsSprinting = false;
-                MaxSprintSpeed = false;
-                SprintSpeedDecrease = Mathf.MoveTowards(SprintSpeedDecrease, 0, 3 * Time.deltaTime);
+                ReachedMaxSprintSpeed = false;
+                CurrentSprintSpeedIntensity = Mathf.MoveTowards(CurrentSprintSpeedIntensity, 0, 3 * Time.deltaTime);
                 CanSprint = true;
             }
 
         }
         protected Vector3 WordSpaceToBlendTreeSpace(Vector3 LookAtPosition, Transform DirectionTransform)
         {
-            Vector3 inputaxis;
+            Vector3 inputaxis = new Vector3();
             inputaxis = DirectionTransform.forward;
+            //inputaxis.x = DirectionTransform.forward.x;
+            //inputaxis.z = DirectionTransform.forward.z;
+            //inputaxis.y = 0;
 
             float forwardBackwardsMagnitude = 0;
-            float rightLeftMagnitude;
+            float rightLeftMagnitude = 0;
 
             if (inputaxis.magnitude > 0)
             {
+                //Forward Input Value
                 Vector3 normalizedLookingAt = LookAtPosition - transform.position;
                 normalizedLookingAt.Normalize();
 
                 forwardBackwardsMagnitude = Mathf.Clamp(Vector3.Dot(inputaxis, normalizedLookingAt), -1, 1);
+
+                //Righ Input Value
+                Vector3 perpendicularLookingAt = new Vector3(normalizedLookingAt.z, 0, -normalizedLookingAt.x);
                 rightLeftMagnitude = Mathf.Clamp(Vector3.Dot(inputaxis, transform.right), -1, 1);
 
                 return new Vector3(rightLeftMagnitude, 0, forwardBackwardsMagnitude).normalized;
@@ -866,7 +1043,6 @@ namespace JUTPS.CharacterBrain
                 return inputaxis;
             }
         }
-
         protected virtual void CalculateBodyRotation(ref float bodyRotation)
         {
             if (IsMoving && BodyInclination && CanMove && !WallAHead)
@@ -876,7 +1052,10 @@ namespace JUTPS.CharacterBrain
                     bodyRotation = Mathf.LerpAngle(bodyRotation, DesiredRotationAngle() / 180, 2.5f * Time.deltaTime);
 
                     if (Mathf.Abs(DesiredRotationAngle()) < 10)
+                    {
                         bodyRotation = Mathf.LerpAngle(bodyRotation, 0, 2 * Time.deltaTime);
+                        // transform.rotation = Quaternion.RotateTowards(transform.rotation, DirectionTransform.rotation, RotationSpeed * Time.deltaTime);
+                    }
                 }
                 else
                 {
@@ -893,55 +1072,72 @@ namespace JUTPS.CharacterBrain
         public void CalculateRotationIntensity(ref float RotationIntensity, float Multiplier = 2)
         {
             float diff = Multiplier * Vector3.SignedAngle(transform.forward, Quaternion.Euler(oldEulerAngles) * Vector3.forward, transform.up);
+
             RotationIntensity = Mathf.LerpAngle(RotationIntensity, diff, 5 * Time.deltaTime);
+
+            //if(!IsArtificialIntelligence)Debug.Log(diff);
             oldEulerAngles = transform.eulerAngles;
         }
 
-        protected float DesiredRotationAngle() =>
-             Vector3.SignedAngle(transform.forward, DirectionTransform.forward, transform.up);
+        protected float DesiredRotationAngle()
+        {
+            return Vector3.SignedAngle(transform.forward, DirectionTransform.forward, transform.up);
+        }
 
         protected virtual void Sprinting()
         {
             if (SprintingSkill)
             {
-                if (IsSprinting && IsPunching == false)
+                if (FiringMode)
                 {
-                    if (VelocityMultiplier < 2f && MaxSprintSpeed == false)
+                    CurrentSprintSpeedIntensity = 0;
+                    ReachedMaxSprintSpeed = true;
+                }
+
+                if (IsRunning && IsSprinting && IsPunching == false)
+                {
+                    if (CurrentSprintSpeedIntensity >= SprintingSpeedMax && UnlimitedSprintDuration == false)
                     {
-                        if (SprintSpeedDecrease < 10)
-                            SprintSpeedDecrease += 2 * Time.deltaTime;
-
-                        VelocityMultiplier += (SprintSpeedDecrease - GroundAngleDesacelerationValue() * 10) * Time.deltaTime;
-
-                        if (GroundAngleDesaceleration)
-                            if (VelocityMultiplier > 1.9f || GroundAngle > 20)
-                                MaxSprintSpeed = true;
-                            else
-                            if (VelocityMultiplier > 1.9f)
-                                MaxSprintSpeed = true;
+                        ReachedMaxSprintSpeed = true;
                     }
 
-                    if (MaxSprintSpeed == true)
+                    //Speed Up
+                    if (VelocityMultiplier <= SprintingSpeedMax && ReachedMaxSprintSpeed == false)
                     {
-                        SprintSpeedDecrease -= 0.6f * Time.deltaTime;
-                        VelocityMultiplier += (SprintSpeedDecrease - GroundAngleDesacelerationValue() * 10) * Time.deltaTime;
+                        CurrentSprintSpeedIntensity = Mathf.Lerp(CurrentSprintSpeedIntensity, SprintingSpeedMax + 0.3f, SprintingAcceleration * Time.deltaTime);
+                        VelocityMultiplier = Mathf.Lerp(VelocityMultiplier, CurrentSprintSpeedIntensity - GroundAngleDesacelerationValue(), 10 * Time.deltaTime);
+                    }
 
-                        if (VelocityMultiplier < 1.4f)
+
+                    //Speed Down
+                    if (ReachedMaxSprintSpeed == true)
+                    {
+                        CurrentSprintSpeedIntensity -= SprintingDeceleration * Time.deltaTime;
+                        VelocityMultiplier = CurrentSprintSpeedIntensity;
+
+                        if (VelocityMultiplier < RunSpeed)
                         {
                             CanSprint = false;
                             IsSprinting = false;
-                            MaxSprintSpeed = false;
+                            ReachedMaxSprintSpeed = false;
+                            CurrentSprintSpeedIntensity = RunSpeed;
                         }
                     }
                 }
 
-                if (IsRunning && CanSprint == true && IsSprinting == false)
+                //Run Impulse
+                if (IsRunning && CanSprint == true && IsSprinting == false && SprintOnRunButton == false)
+                {
                     IsSprinting = true;
+                }
+                CurrentSprintSpeedIntensity = Mathf.Clamp(CurrentSprintSpeedIntensity, RunSpeed, SprintingSpeedMax);
             }
         }
 
+
         protected virtual void GroundCheck()
         {
+            //Ground Check
             if (IsDriving == false)
             {
                 Collider[] groundcheck = Physics.OverlapBox(transform.position + transform.up * GroundCheckHeighOfsset, new Vector3(GroundCheckRadius, GroundCheckSize, GroundCheckRadius), transform.rotation, WhatIsGround);
@@ -951,14 +1147,19 @@ namespace JUTPS.CharacterBrain
                 }
                 else if (IsGrounded == true)
                 {
-                    if (SetRigidbodyVelocity == false)
+                    //Simulate Inert
+                    if (!SetRigidbodyVelocity)
+                    {
                         rb.AddForce(DirectionTransform.forward * LastVelMult * rb.mass * Speed, ForceMode.Impulse);
+                    }
 
-                    IsGrounded = false;
+                    if (AdjustHeight == false) IsGrounded = false;
                 }
             }
 
-            if (Physics.Raycast(transform.position + transform.up * 0.5f, -transform.up, out RaycastHit hit, 2, WhatIsGround))
+            //Ground Angle Check
+            RaycastHit hit;
+            if (Physics.Raycast(transform.position + transform.up * 0.5f, -transform.up, out hit, 2, WhatIsGround))
             {
                 GroundAngle = Vector3.Angle(Vector3.up, hit.normal);
                 GroundNormal = hit.normal;
@@ -971,18 +1172,24 @@ namespace JUTPS.CharacterBrain
                 GroundPoint = Vector3.zero;
             }
         }
-
         protected Vector3 GetGroundPoint()
         {
-            bool isHit = Physics.Raycast(transform.position + transform.up * 0.5f, -transform.up, out RaycastHit hit, 1000, WhatIsGround);
-            GroundPoint = isHit ? hit.point : Vector3.zero;
-
+            RaycastHit hit;
+            if (Physics.Raycast(transform.position + transform.up * 0.5f, -transform.up, out hit, 1000, WhatIsGround))
+            {
+                GroundPoint = hit.point;
+            }
+            else
+            {
+                GroundPoint = Vector3.zero;
+            }
             return GroundPoint;
         }
-
         protected virtual void WallAHeadCheck()
         {
-            if (Physics.Raycast(transform.position + transform.up * WallRayHeight, DirectionTransform.forward, out RaycastHit HitFront, WallRayDistance, WhatIsWall))
+            //Wall in front
+            RaycastHit HitFront;
+            if (Physics.Raycast(transform.position + transform.up * WallRayHeight, DirectionTransform.forward, out HitFront, WallRayDistance, WhatIsWall))
             {
                 WallAHead = true;
                 Debug.DrawLine(HitFront.point, transform.position + transform.up * WallRayHeight);
@@ -994,13 +1201,12 @@ namespace JUTPS.CharacterBrain
             if (WallAHead == true)
             {
                 VelocityMultiplier = Mathf.Lerp(VelocityMultiplier, 0, 10 * Time.deltaTime);
-                SprintSpeedDecrease = 0;
+                CurrentSprintSpeedIntensity = 0;
             }
         }
-
         protected virtual void SlopeSlide()
         {
-            if (GroundAngle > MaxWalkableAngle)
+            if (GroundAngle > MaxWalkableAngle && IsGrounded)
             {
                 if (IsSliding == false)
                 {
@@ -1008,7 +1214,7 @@ namespace JUTPS.CharacterBrain
                 }
                 else if (MaxWalkableAngle > 0)
                 {
-                    SlidingVelocity += 2 * Physics.gravity.y * Time.deltaTime;
+                    SlidingVelocity += Physics.gravity.y * Time.deltaTime;
                     transform.Translate(-GroundNormal * SlidingVelocity * Time.deltaTime, Space.World);
                     transform.Translate(Vector3.up * SlidingVelocity * Time.deltaTime, Space.World);
 
@@ -1016,7 +1222,7 @@ namespace JUTPS.CharacterBrain
             }
             else
             {
-                SlidingVelocity = -10;
+                SlidingVelocity = 0;
                 IsSliding = false;
             }
         }
@@ -1024,9 +1230,9 @@ namespace JUTPS.CharacterBrain
         protected float StepAngle()
         {
             float angle = 0;
-            if (Step_Hit.point != Vector3.zero)
+            if (_stepHit.point != Vector3.zero)
             {
-                angle = Vector3.Angle(transform.up, Step_Hit.normal);
+                angle = Vector3.Angle(transform.up, _stepHit.normal);
             }
             return angle;
         }
@@ -1055,41 +1261,77 @@ namespace JUTPS.CharacterBrain
         {
             if (IsDriving || !CanMove) return;
 
-            if (IsMoving && EnableStepCorrection == true)
+            if (IsMoving && EnableUngroundedStepUp && IsGrounded == false && LeftFootBone != null && RightFootBone != null && UngroundedStepUpSpeed > 0 && WallAHead == false)
+            {
+                // Step detection
+                if (Physics.SphereCast(transform.position + transform.up * FootstepHeight + transform.forward * ForwardStepOffset, ((CapsuleCollider)coll).radius / 2, -transform.up, out FootStepHit, UngroundedStepUpRayDistance, WhatIsGround) && GoToStepPosition == false) { if (FootStepHit.point.y > GroundPoint.y + StepHeight && FootStepHit.point.y > transform.position.y + StepHeight && StepAngle() < 10) { StepPosition = FootStepHit.point; GoToStepPosition = true; StartStepUpCharacterPosition = transform.position; } }
+            }
+
+            if (IsMoving && EnableStepCorrection && IsGrounded == true && WallAHead == false)
             {
                 //Step height Correction
-                if (Physics.Raycast(transform.position + transform.up * FootstepHeight + DirectionTransform.forward * ForwardStepOffset, -Vector3.up, out Step_Hit, FootstepHeight - StepHeight, WhatIsGround) && AdjustHeight == false)
+                if (Physics.Raycast(transform.position + transform.up * FootstepHeight + DirectionTransform.forward * ForwardStepOffset, -Vector3.up, out _stepHit, FootstepHeight - StepHeight, WhatIsGround) && AdjustHeight == false)
                 {
-                    if (Step_Hit.point.y > transform.position.y && StepAngle() < 10)
+                    if (_stepHit.point.y > transform.position.y && StepAngle() < 10)
                     {
                         AdjustHeight = true;
                     }
                 }
-                else
-                {
-                    Step_Hit.point = transform.position;
-                    AdjustHeight = false;
-                }
+                //else
+                //{
+                //Step_Hit.point = transform.position;
+                //AdjustHeight = false;
+                //}
             }
-            else
-            {
-                AdjustHeight = false;
-                Step_Hit.point = transform.position;
-            }
+            //else
+            //{
+            //AdjustHeight = false;
+            //Step_Hit.point = transform.position;
+            //}
 
-            if (!AdjustHeight) Step_Hit.point = transform.position;
-
+            if (!AdjustHeight) _stepHit.point = transform.position;
         }
+
         protected virtual void StepCorrectionMovement()
         {
-            if (AdjustHeight && IsMoving && !IsDriving)
+            if (GoToStepPosition && EnableUngroundedStepUp)
             {
-                transform.position += transform.up * (UpStepSpeed / 2 + (UpStepSpeed / 2 * VelocityMultiplier)) * Time.fixedDeltaTime;
-                rb.AddForce(transform.up * rb.mass / 8 * UpStepSpeed, ForceMode.Impulse);
-
-                if (Step_Hit.point.y < transform.position.y - 0.00001f)
+                GoingToStepTime = Mathf.MoveTowards(GoingToStepTime, (1f + StoppingTimeOnStepPosition), UngroundedStepUpSpeed * Time.deltaTime);
+                transform.position = Vector3.Slerp(StartStepUpCharacterPosition, StepPosition, GoingToStepTime);
+                if (IsJumping == false)
                 {
-                    Step_Hit.point = transform.position;
+                    anim.SetBool(AnimatorParameters.Grounded, true);
+                    anim.SetFloat(AnimatorParameters.LandingIntensity, 1.5f);
+                }
+                if (GoingToStepTime >= (1f + StoppingTimeOnStepPosition))
+                {
+                    GoToStepPosition = false;
+                    GoingToStepTime = 0;
+                    StartStepUpCharacterPosition = transform.position;
+                }
+                if (GoingToStepTime < (1f + StoppingTimeOnStepPosition))
+                {
+                    VelocityMultiplier = 0;
+                }
+
+                return;
+            }
+
+            if (AdjustHeight && !IsDriving)
+            {
+                Vector3 playerStepPosition = transform.position; playerStepPosition.y = _stepHit.point.y;
+
+                //transform.position = Vector3.Lerp(transform.position, playerStepPosition, 8 * UpStepSpeed * Time.deltaTime);
+                transform.position = Vector3.MoveTowards(transform.position, playerStepPosition, UpStepSpeed * Time.deltaTime);
+                //transform.position += transform.up * (UpStepSpeed / 2 + (UpStepSpeed / 2 * VelocityMultiplier)) * Time.fixedDeltaTime;
+                rb.AddForce(transform.up * rb.mass / 8 * UpStepSpeed, ForceMode.Impulse);
+                anim.SetBool(AnimatorParameters.Grounded, true);
+                //rb.AddForce(transform.up * rb.mass * UpStepSpeed / 10, ForceMode.Impulse);
+                rb.linearVelocity = rb.linearVelocity + Vector3.up * 0;
+
+                if (transform.position.y > playerStepPosition.y + 0.05F)
+                {
+                    _stepHit.point = transform.position;
                     AdjustHeight = false;
                 }
             }
@@ -1271,25 +1513,27 @@ namespace JUTPS.CharacterBrain
             if (HoldableItemInUseLeftHand != null) { if ((HoldableItemInUseLeftHand is MeleeWeapon) == false) return; }
 
 
-            IsMeleeAttacking = MeleeWeaponInUseLeftHand != null && MeleeWeaponInUseLeftHand.IsUsingItem;
-            IsMeleeAttacking = MeleeWeaponInUseRightHand != null && MeleeWeaponInUseRightHand.IsUsingItem;
+            IsMeleeAttacking = (LeftHandMeleeWeapon != null) ? LeftHandMeleeWeapon.IsUsingItem : false;
+            IsMeleeAttacking = (RightHandMeleeWeapon != null) ? RightHandMeleeWeapon.IsUsingItem : false;
 
 
             if (AttackInputDown)
             {
-                if (MeleeWeaponInUseLeftHand != null && MeleeWeaponInUseRightHand == null)
+                if (LeftHandMeleeWeapon != null && RightHandMeleeWeapon == null)
                 {
-                    anim.SetTrigger(MeleeWeaponInUseLeftHand.AttackAnimatorParameterName);
+                    anim.SetTrigger(LeftHandMeleeWeapon.AttackAnimatorParameterName);
+                    IsMeleeAttacking = true;
                 }
-                if (MeleeWeaponInUseRightHand != null)
+                if (RightHandMeleeWeapon != null)
                 {
-                    anim.SetTrigger(MeleeWeaponInUseRightHand.AttackAnimatorParameterName);
+                    anim.SetTrigger(RightHandMeleeWeapon.AttackAnimatorParameterName);
+                    IsMeleeAttacking = true;
                 }
             }
         }
         public virtual void UseWeaponRightHand(bool ShotInput, bool ShotInputDown, bool AimInput, bool AimInputDown)
         {
-            if ((HoldableItemInUseRightHand is Weapon) == false) { WeaponInUseRightHand = null; return; }
+            if ((HoldableItemInUseRightHand is Weapon) == false) { return; }
 
             if (!FiringMode || IsRolling || IsDead || IsDriving || IsReloading)
             {
@@ -1297,12 +1541,12 @@ namespace JUTPS.CharacterBrain
                 return;
             }
 
-            if (MovementAffectsWeaponAccuracy) WeaponInUseRightHand.ShotErrorProbability += (VelocityMultiplier * WeaponInUseRightHand.Precision) * Time.fixedDeltaTime / (8 * OnMovePrecision);
+            if (MovementAffectsWeaponAccuracy) RightHandWeapon.ShotErrorProbability += (VelocityMultiplier * RightHandWeapon.Precision) * Time.fixedDeltaTime / (8 * OnMovePrecision);
 
             bool canUseItem = false;
 
             // Weapon Using Control
-            if (WeaponInUseRightHand.ContinuousUseItem)
+            if (RightHandWeapon.ContinuousUseItem)
             {
                 canUseItem = HoldableItemInUseRightHand.CanUseItem;
             }
@@ -1314,7 +1558,7 @@ namespace JUTPS.CharacterBrain
 
             //Aiming
 
-            if (JUGameManager.IsMobile)
+            if (JUGameManager.IsMobileControls)
             {
                 if (AimInputDown) IsAiming = !IsAiming;
             }
@@ -1335,7 +1579,7 @@ namespace JUTPS.CharacterBrain
 
 
             // >>> Full Auto Shooting (CONTINUOUS Item Use ONLY)
-            if (WeaponInUseRightHand.FireMode != Weapon.WeaponFireMode.SemiAuto)
+            if (RightHandWeapon.FireMode != Weapon.WeaponFireMode.SemiAuto)
             {
                 if (ShotInput && ArmsWeightIK > 0.4f && canUseItem)
                 {
@@ -1343,7 +1587,7 @@ namespace JUTPS.CharacterBrain
                 }
                 else
                 {
-                    WeaponInUseRightHand.StopUseItemDelayed(0.09f);
+                    RightHandWeapon.StopUseItemDelayed(0.09f);
                 }
             }
             else
@@ -1357,19 +1601,19 @@ namespace JUTPS.CharacterBrain
                 }
                 else
                 {
-                    WeaponInUseRightHand.StopUseItemDelayed(0.09f);
+                    RightHandWeapon.StopUseItemDelayed(0.09f);
                 }
 
                 //Force shooting out of firerate
-                if (ShotInputDown && IsRolling == false && IsDriving == false && ArmsWeightIK > 0.4f && WeaponInUseRightHand.BulletsAmounts > 0 && WeaponInUseRightHand.IsUsingItem == true && WeaponInUseRightHand.CurrentFireRateToShoot > 0.09f)
+                if (ShotInputDown && IsRolling == false && IsDriving == false && ArmsWeightIK > 0.4f && RightHandWeapon.BulletsAmounts > 0 && RightHandWeapon.IsUsingItem == true && RightHandWeapon.CurrentFireRateToShoot > 0.09f)
                 {
-                    WeaponInUseRightHand.Shot();
+                    RightHandWeapon.Shot();
                 }
             }
         }
         public virtual void UseWeaponLeftHand(bool ShotInput, bool ShotInputDown, bool AimInput, bool AimInputDown)
         {
-            if ((HoldableItemInUseLeftHand is Weapon) == false) { WeaponInUseLeftHand = null; return; }
+            if ((HoldableItemInUseLeftHand is Weapon) == false) { return; }
 
             if (!FiringMode || IsRolling || IsDead || IsDriving || IsReloading)
             {
@@ -1377,12 +1621,12 @@ namespace JUTPS.CharacterBrain
                 return;
             }
 
-            if (MovementAffectsWeaponAccuracy) WeaponInUseLeftHand.ShotErrorProbability += (VelocityMultiplier * WeaponInUseLeftHand.Precision) * Time.fixedDeltaTime / (8 * OnMovePrecision);
+            if (MovementAffectsWeaponAccuracy) LeftHandWeapon.ShotErrorProbability += (VelocityMultiplier * LeftHandWeapon.Precision) * Time.fixedDeltaTime / (8 * OnMovePrecision);
 
             bool canUseItem = false;
 
             // Weapon Using Control
-            if (WeaponInUseLeftHand.ContinuousUseItem)
+            if (LeftHandWeapon.ContinuousUseItem)
             {
                 canUseItem = HoldableItemInUseLeftHand.CanUseItem;
             }
@@ -1392,7 +1636,7 @@ namespace JUTPS.CharacterBrain
             }
 
             //Aiming
-            if (JUGameManager.IsMobile)
+            if (JUGameManager.IsMobileControls)
             {
                 if (AimInput) IsAiming = !IsAiming;
             }
@@ -1413,7 +1657,7 @@ namespace JUTPS.CharacterBrain
             if (HoldableItemInUseLeftHand != null && HoldableItemInUseLeftHand != null) IsAiming = false;
 
             // >>> Full Auto Shooting (CONTINUOUS Item Use ONLY)
-            if (WeaponInUseLeftHand.FireMode != Weapon.WeaponFireMode.SemiAuto)
+            if (LeftHandWeapon.FireMode != Weapon.WeaponFireMode.SemiAuto)
             {
                 if (ShotInput && ArmsWeightIK > 0.4f && canUseItem)
                 {
@@ -1421,7 +1665,7 @@ namespace JUTPS.CharacterBrain
                 }
                 else
                 {
-                    WeaponInUseLeftHand.StopUseItemDelayed(0.09f);
+                    LeftHandWeapon.StopUseItemDelayed(0.09f);
                 }
             }
             else
@@ -1435,13 +1679,13 @@ namespace JUTPS.CharacterBrain
                 }
                 else
                 {
-                    WeaponInUseLeftHand.StopUseItemDelayed(0.09f);
+                    LeftHandWeapon.StopUseItemDelayed(0.09f);
                 }
 
                 //Force shooting out of firerate
-                if (ShotInputDown && IsRolling == false && IsDriving == false && ArmsWeightIK > 0.4f && WeaponInUseLeftHand.BulletsAmounts > 0 && WeaponInUseLeftHand.IsUsingItem == true && WeaponInUseLeftHand.CurrentFireRateToShoot > 0.09f)
+                if (ShotInputDown && IsRolling == false && IsDriving == false && ArmsWeightIK > 0.4f && LeftHandWeapon.BulletsAmounts > 0 && LeftHandWeapon.IsUsingItem == true && LeftHandWeapon.CurrentFireRateToShoot > 0.09f)
                 {
-                    WeaponInUseLeftHand.Shot();
+                    LeftHandWeapon.Shot();
                 }
             }
 
@@ -1454,11 +1698,12 @@ namespace JUTPS.CharacterBrain
             {
                 if (HoldableItemInUseRightHand is ThrowableItem)
                 {
-                    if (LookAtPosition == Vector3.zero && MyCamera != null && FiringMode == true)
+                    if (LookAtPosition == Vector3.zero && MyPivotCamera != null && FiringMode == true)
                     {
                         ThrowableItem item = (HoldableItemInUseRightHand as ThrowableItem);
-                        item.DirectionToThrow = transform.InverseTransformDirection(MyCamera.transform.forward);
-                        item.ThrowThis(item.ThrowForce, item.ThrowUpForce, item.PositionToThrow, transform.InverseTransformDirection(MyCamera.transform.forward), item.RotationForce);
+                        Vector3 cameraForward = MyPivotCamera.mCamera.transform.forward;
+                        item.DirectionToThrow = transform.InverseTransformDirection(cameraForward);
+                        item.ThrowThis(item.ThrowForce, item.ThrowUpForce, item.PositionToThrow, transform.InverseTransformDirection(cameraForward), item.RotationForce);
                     }
                     else
                     {
@@ -1470,11 +1715,12 @@ namespace JUTPS.CharacterBrain
             {
                 if (HoldableItemInUseLeftHand is ThrowableItem)
                 {
-                    if (LookAtPosition == Vector3.zero && MyCamera != null && FiringMode == true)
+                    if (LookAtPosition == Vector3.zero && MyPivotCamera && MyPivotCamera.mCamera && FiringMode == true)
                     {
                         ThrowableItem item = (HoldableItemInUseLeftHand as ThrowableItem);
-                        item.DirectionToThrow = transform.InverseTransformDirection(MyCamera.transform.forward);
-                        item.ThrowThis(item.ThrowForce, item.ThrowUpForce, item.PositionToThrow, transform.InverseTransformDirection(MyCamera.transform.forward), item.RotationForce);
+                        Vector3 cameraForward = MyPivotCamera.mCamera.transform.forward;
+                        item.DirectionToThrow = transform.InverseTransformDirection(cameraForward);
+                        item.ThrowThis(item.ThrowForce, item.ThrowUpForce, item.PositionToThrow, transform.InverseTransformDirection(cameraForward), item.RotationForce);
                     }
                     else
                     {
@@ -1485,17 +1731,17 @@ namespace JUTPS.CharacterBrain
         }
         public virtual void _ReloadEquipedWeapons(bool ReloadInput)
         {
-            if (WeaponInUseRightHand != null)
+            if (RightHandWeapon != null)
             {
                 //Reload
-                if (ReloadInput && WeaponInUseRightHand.BulletsAmounts < WeaponInUseRightHand.BulletsPerMagazine && WeaponInUseRightHand.TotalBullets > 0)
+                if (ReloadInput && RightHandWeapon.BulletsAmounts < RightHandWeapon.BulletsPerMagazine && RightHandWeapon.TotalBullets > 0)
                 {
                     _ReloadWeaponRightHandWeapon();
                 }
             }
-            if (WeaponInUseLeftHand != null)
+            if (LeftHandWeapon != null)
             {
-                if (ReloadInput && WeaponInUseLeftHand.BulletsAmounts < WeaponInUseLeftHand.BulletsPerMagazine && WeaponInUseLeftHand.TotalBullets > 0)
+                if (ReloadInput && LeftHandWeapon.BulletsAmounts < LeftHandWeapon.BulletsPerMagazine && LeftHandWeapon.TotalBullets > 0)
                 {
                     _ReloadWeaponLeftHandWeapon();
                 }
@@ -1503,8 +1749,8 @@ namespace JUTPS.CharacterBrain
         }
         public virtual void _ReloadWeaponRightHandWeapon()
         {
-            if (WeaponInUseRightHand == null) return;
-            if (WeaponInUseRightHand.BulletsAmounts < WeaponInUseRightHand.BulletsPerMagazine && WeaponInUseRightHand.TotalBullets > 0)
+            if (RightHandWeapon == null) return;
+            if (RightHandWeapon.BulletsAmounts < RightHandWeapon.BulletsPerMagazine && RightHandWeapon.TotalBullets > 0)
             {
                 anim.SetTrigger(AnimatorParameters.ReloadRightWeapon);
                 IsReloading = true;
@@ -1512,8 +1758,8 @@ namespace JUTPS.CharacterBrain
         }
         public virtual void _ReloadWeaponLeftHandWeapon()
         {
-            if (WeaponInUseLeftHand == null) return;
-            if (WeaponInUseLeftHand.BulletsAmounts < WeaponInUseLeftHand.BulletsPerMagazine && WeaponInUseLeftHand.TotalBullets > 0)
+            if (LeftHandWeapon == null) return;
+            if (LeftHandWeapon.BulletsAmounts < LeftHandWeapon.BulletsPerMagazine && LeftHandWeapon.TotalBullets > 0)
             {
                 anim.SetTrigger(AnimatorParameters.ReloadLeftWeapon);
                 IsReloading = true;
@@ -1522,9 +1768,9 @@ namespace JUTPS.CharacterBrain
 
         public virtual void _AutoReload(bool ShotInput = true)
         {
-            if (WeaponInUseLeftHand != null && WeaponInUseRightHand != null)
+            if (LeftHandWeapon != null && RightHandWeapon != null)
             {
-                if (ShotInput && WeaponInUseRightHand.BulletsAmounts <= 0 && WeaponInUseRightHand.TotalBullets > 0 && WeaponInUseLeftHand.BulletsAmounts <= 0 && WeaponInUseLeftHand.TotalBullets > 0)
+                if (ShotInput && RightHandWeapon.BulletsAmounts <= 0 && RightHandWeapon.TotalBullets > 0 && LeftHandWeapon.BulletsAmounts <= 0 && LeftHandWeapon.TotalBullets > 0)
                 {
                     _ReloadWeaponRightHandWeapon();
                     _ReloadWeaponLeftHandWeapon();
@@ -1534,19 +1780,26 @@ namespace JUTPS.CharacterBrain
             {
 
 
-                if (WeaponInUseRightHand != null)
+                if (RightHandWeapon != null)
                 {
-                    if (ShotInput && WeaponInUseRightHand.BulletsAmounts == 0 && WeaponInUseRightHand.TotalBullets > 0)
+                    if (ShotInput && RightHandWeapon.BulletsAmounts == 0 && RightHandWeapon.TotalBullets > 0)
+                    {
                         _ReloadWeaponRightHandWeapon();
+                    }
                 }
-                if (WeaponInUseLeftHand != null)
+                if (LeftHandWeapon != null)
                 {
-                    if (ShotInput && WeaponInUseLeftHand.BulletsAmounts == 0 && WeaponInUseLeftHand.TotalBullets > 0)
+                    //if (WeaponInUseLeftHand.BulletsAmounts == 0 && WeaponInUseLeftHand.TotalBullets > 0 && IsReloading == true && IsInvoking("_ReloadWeaponLeftHandWeapon") == false)
+                    //{
+                    //    Invoke("_ReloadWeaponLeftHandWeapon", 0.5f);
+                    // }
+                    if (ShotInput && LeftHandWeapon.BulletsAmounts == 0 && LeftHandWeapon.TotalBullets > 0)
+                    {
                         _ReloadWeaponLeftHandWeapon();
+                    }
                 }
             }
         }
-
         public virtual void _Move(float HorizontalInput, float VerticalInput, bool Running)
         {
             HorizontalX = HorizontalInput;
@@ -1567,11 +1820,13 @@ namespace JUTPS.CharacterBrain
                 anim.GetCurrentAnimatorStateInfo(0).IsName("Prone FireMode BlendTree") ||
                 anim.GetCurrentAnimatorStateInfo(0).IsName("Prone To Crouch")) return;
 
+            //Change States
             IsGrounded = false;
             IsJumping = true;
             CanJump = false;
             IsCrouched = false;
 
+            //Add Force
             rb.AddForce(transform.up * 200 * JumpForce, ForceMode.Impulse);
             if (SetRigidbodyVelocity == false)
             {
@@ -1579,10 +1834,12 @@ namespace JUTPS.CharacterBrain
                 VelocityMultiplier = 0;
             }
 
+            //Disable IsJumping state in 0.3s
             Invoke(nameof(_disablejump), 0.3f);
         }
         public virtual void _NewJumpDelay(float Delay = 0.3f, bool JumpDecreaseSpeed = false)
         {
+            //New Jump Delay
             if (CanJump == false && IsJumping == false && IsGrounded == true && IsInvoking(nameof(_enableCanJump)) == false)
             {
                 if (JumpDecreaseSpeed) VelocityMultiplier = VelocityMultiplier / 4;
@@ -1617,8 +1874,9 @@ namespace JUTPS.CharacterBrain
         }
         public virtual void _Roll()
         {
-            if (IsGrounded == false || IsRolling == true || IsProne) return;
+            if (IsGrounded == false || IsRolling == true || IsProne || anim.GetBool(AnimatorParameters.Roll)) return;
             anim.SetTrigger(AnimatorParameters.Roll);
+            IsRolling = true;
             Invoke(nameof(stopRolling), 1f);
         }
         public virtual void _DoPunch()
@@ -1636,6 +1894,11 @@ namespace JUTPS.CharacterBrain
             {
                 UseLeftHandItem(ShotInput, ShotInputDown);
                 UseRightHandItem(ShotInput, ShotInputDown);
+
+                if (RightHandWeapon != null)
+                {
+                    if (RightHandWeapon.AimMode == Weapon.WeaponAimMode.None) { IsAiming = false; AimInput = false; AimInputDown = false; }
+                }
 
                 if (RightHandWeightIK > 0.5f) UseWeaponLeftHand(ShotInput, ShotInputDown, AimInput, AimInputDown);
                 if (RightHandWeightIK > 0.5f) UseWeaponRightHand(ShotInput, ShotInputDown, AimInput, AimInputDown);
@@ -1660,14 +1923,14 @@ namespace JUTPS.CharacterBrain
         #region Default Animation Events
         public void reloadRightHandWeapon()
         {
-            if (WeaponInUseRightHand != null) WeaponInUseRightHand.Reload();
+            if (RightHandWeapon != null) RightHandWeapon.Reload();
 
             anim.ResetTrigger(AnimatorParameters.ReloadRightWeapon);
             IsReloading = false;
         }
         public void reloadLeftHandWeapon()
         {
-            if (WeaponInUseLeftHand != null) WeaponInUseLeftHand.Reload();
+            if (LeftHandWeapon != null) LeftHandWeapon.Reload();
 
             anim.ResetTrigger(AnimatorParameters.ReloadLeftWeapon);
             IsReloading = false;
@@ -1675,18 +1938,18 @@ namespace JUTPS.CharacterBrain
 
         public void emitBulletShell()
         {
-            if (WeaponInUseRightHand != null)
+            if (RightHandWeapon != null)
             {
-                if (WeaponInUseRightHand.BulletCasingPrefab != null)
+                if (RightHandWeapon.BulletCasingPrefab != null)
                 {
-                    WeaponInUseRightHand.EmitBulletShell();
+                    RightHandWeapon.EmitBulletShell();
                 }
             }
-            if (WeaponInUseLeftHand != null)
+            if (LeftHandWeapon != null)
             {
-                if (WeaponInUseLeftHand.BulletCasingPrefab != null)
+                if (LeftHandWeapon.BulletCasingPrefab != null)
                 {
-                    WeaponInUseLeftHand.EmitBulletShell();
+                    LeftHandWeapon.EmitBulletShell();
                 }
             }
         }
@@ -1751,13 +2014,7 @@ namespace JUTPS.CharacterBrain
 
 
         #region State Functions
-        protected void DrivingCheck()
-        {
-            if (DriveVehicleAbility == null) { IsDriving = false; return; }
 
-            IsDriving = DriveVehicleAbility.IsDriving;
-            VehicleInArea = DriveVehicleAbility.VehicleToDrive;
-        }
         protected void HealthCheck()
         {
             if (CharacterHealth == null) return;
@@ -1776,7 +2033,6 @@ namespace JUTPS.CharacterBrain
             IsGrounded = false;
             IsItemEquiped = false;
             IsRolling = false;
-            IsDriving = false;
             UsedItem = false;
             WallAHead = false;
             FiringModeIK = false;
@@ -1799,6 +2055,7 @@ namespace JUTPS.CharacterBrain
             }
             else
             {
+                //if (Inventory.EnablePickup == false) { ToPickupItem = false; return; }
                 if (Inventory.ItemToPickUp != null)
                 {
                     ToPickupItem = true;
@@ -1810,19 +2067,24 @@ namespace JUTPS.CharacterBrain
                         Invoke(nameof(DisableToPickUpItemBoolean), 0.3f);
                     }
                 }
-                ToPickupItem = Inventory.ItemToPickUp != null;
+                ToPickupItem = Inventory.ItemToPickUp == null ? false : true;
             }
         }
         private void DisableToPickUpItemBoolean() => ToPickupItem = false;
 
-        public virtual void TakeDamage(float Damage, Vector3 hitPosition = default(Vector3))
+        public void TakeDamage(float damage)
+        {
+            TakeDamage(new JUHealth.DamageInfo { Damage = damage });
+        }
+
+        public virtual void TakeDamage(JUHealth.DamageInfo damageInfo)
         {
             if (CharacterHealth == null)
             {
                 CharacterHealth = GetComponent<JUHealth>();
                 if (CharacterHealth == null) return;
             }
-            CharacterHealth.DoDamage(Damage, hitPosition);
+            CharacterHealth.DoDamage(damageInfo);
         }
         public virtual void KillCharacter()
         {
@@ -1844,12 +2106,12 @@ namespace JUTPS.CharacterBrain
             CharacterHealth.Health = 0;
             IsDead = true;
         }
-        public virtual void RessurectCharacter(float health = 100)
+        public virtual void RessurectCharacter()
         {
             if (IsDead == false) return;
 
             //Reset Camera
-            if (FindFirstObjectByType<TPSCameraController>() != null) { FindFirstObjectByType<TPSCameraController>().mCamera.transform.localEulerAngles = Vector3.zero; }
+            if (FindObjectOfType<TPSCameraController>() != null) { FindObjectOfType<TPSCameraController>().mCamera.transform.localEulerAngles = Vector3.zero; }
 
 
             //Get up
@@ -1869,9 +2131,7 @@ namespace JUTPS.CharacterBrain
             //Reset Health
             if (CharacterHealth != null)
             {
-                CharacterHealth.Health = health;
-                CharacterHealth.IsDead = false;
-                CharacterHealth.CheckHealthState();
+                CharacterHealth.ResetHealth();
             }
             IsDead = false;
 
@@ -1882,6 +2142,7 @@ namespace JUTPS.CharacterBrain
             rb.useGravity = true;
             rb.isKinematic = false;
             rb.linearVelocity = transform.up * rb.linearVelocity.y;
+            rb.constraints = RigidbodyConstraints.FreezeRotation;
 
             //Enable Tps Script
             this.enabled = true;
@@ -1908,18 +2169,18 @@ namespace JUTPS.CharacterBrain
 
             if (HoldableItemInUseLeftHand != null)
             {
-                if (WeaponInUseRightHand == null)
+                if (RightHandWeapon == null)
                 {
                     if (RightHand == false) HoldableItemInUseLeftHand.UseItem();
                     if (HoldableItemInUseRightHand != null && RightHand == true) HoldableItemInUseRightHand.UseItem();
                 }
                 else
                 {
-                    if (WeaponInUseLeftHand != null)
+                    if (LeftHandWeapon != null)
                     {
                         //Debug.Log("2 w");
 
-                        if (WeaponInUseRightHand.CurrentFireRateToShoot >= WeaponInUseRightHand.Fire_Rate && WeaponInUseLeftHand.CurrentFireRateToShoot >= WeaponInUseLeftHand.Fire_Rate)
+                        if (RightHandWeapon.CurrentFireRateToShoot >= RightHandWeapon.Fire_Rate && LeftHandWeapon.CurrentFireRateToShoot >= LeftHandWeapon.Fire_Rate)
                         {
                             //WeaponInUseLeftHand.CurrentFireRateToShoot = WeaponInUseLeftHand.Fire_Rate / 2;
                         }
@@ -1927,7 +2188,7 @@ namespace JUTPS.CharacterBrain
                         if (RightHand == true && UsedRightItem == false)
                         {
                             HoldableItemInUseRightHand.UseItem();
-                            WeaponInUseLeftHand.CurrentFireRateToShoot = 0;
+                            LeftHandWeapon.CurrentFireRateToShoot = 0;
                             UsedRightItem = true;
                         }
                         if (RightHand == false && UsedRightItem == true)
@@ -1945,19 +2206,19 @@ namespace JUTPS.CharacterBrain
                 }
             }
 
-            if (WeaponInUseLeftHand != null)
+            if (LeftHandWeapon != null)
             {
-                if ((WeaponInUseLeftHand.FireMode == Weapon.WeaponFireMode.BoltAction ||
-                     WeaponInUseLeftHand.FireMode == Weapon.WeaponFireMode.Shotgun))
+                if ((LeftHandWeapon.FireMode == Weapon.WeaponFireMode.BoltAction ||
+                     LeftHandWeapon.FireMode == Weapon.WeaponFireMode.Shotgun))
                 {
                     Invoke("PullWeaponBolt", 0.3f);
                 }
             }
 
-            if (WeaponInUseRightHand != null)
+            if (RightHandWeapon != null)
             {
-                if ((WeaponInUseRightHand.FireMode == Weapon.WeaponFireMode.BoltAction ||
-                     WeaponInUseRightHand.FireMode == Weapon.WeaponFireMode.Shotgun))
+                if ((RightHandWeapon.FireMode == Weapon.WeaponFireMode.BoltAction ||
+                     RightHandWeapon.FireMode == Weapon.WeaponFireMode.Shotgun))
                 {
                     Invoke("PullWeaponBolt", 0.4f);
                 }
@@ -1991,15 +2252,38 @@ namespace JUTPS.CharacterBrain
         {
             SwitchItens(SwitchDirection.Backward, RightHand);
         }
-        private HoldableItem oldDualItem;
+        public virtual void SwitchToItemInSequentialSlot(JUInventory.SequentialSlotsEnum Slot)
+        {
+            if (!Inventory)
+                return;
+
+            JUItem ItemToSwich = Inventory.GetSequentialSlotItem(Slot);
+            int GlobalItemID = (ItemToSwich == null) ? -1 : JUInventory.GetGlobalItemSwitchID(ItemToSwich, Inventory);
+
+            if (ItemToSwich == null)
+            {
+                SwitchToItem(-1);
+                return;
+            }
+
+            SwitchToItem(ItemToSwich.ItemSwitchID);
+        }
+
+        private JUHoldableItem oldDualItem;
         public void SwitchToItem(int id = -1, bool RightHand = true)
         {
             if (Inventory == null) return;
 
+            if (id >= Inventory.HoldableItensRightHand.Length)
+                return;
+
+            // The item was already equiped.
+            if (HoldableItemInUseRightHand && HoldableItemInUseRightHand.ItemSwitchID == id)
+                return;
+
             //Disable Aiming State and Shot State
             IsAiming = false; UsedItem = false;
-
-            if (JUPauseGame.IsPause || IsReloading || IsReloading || IsDead || IsDriving || IsRagdolled || DisableAllMove) return;
+            if (JUPauseGame.IsPaused || IsReloading || IsDead || IsDriving || IsRagdolled) return;
 
             //if you have an item forcing double wielding before switching items do the left hand item switch
             if (oldDualItem != null)
@@ -2008,7 +2292,6 @@ namespace JUTPS.CharacterBrain
                 oldDualItem.gameObject.SetActive(false);
                 oldDualItem = null;
             }
-
             //Switch
             Inventory.SwitchToItem(id, RightHand);
 
@@ -2020,16 +2303,8 @@ namespace JUTPS.CharacterBrain
             HoldableItemInUseLeftHand = Inventory.HoldableItemInUseInLeftHand;
             HoldableItemInUseRightHand = Inventory.HoldableItemInUseInRightHand;
 
-            //Get Weapon
-            WeaponInUseLeftHand = Inventory.WeaponInUseInLeftHand;
-            WeaponInUseRightHand = Inventory.WeaponInUseInRightHand;
-
-            //Get Melee Weapon
-            MeleeWeaponInUseRightHand = Inventory.MeleeWeaponInUseInRightHand;
-            MeleeWeaponInUseLeftHand = Inventory.MeleeWeaponInUseInLeftHand;
-
             IsItemEquiped = Inventory.IsItemSelected;
-            IsDualWielding = Inventory.DualWielding;
+            IsDualWielding = Inventory.IsDualWielding;
 
             //Force Dual Wielding
             if (RightHand == true)
@@ -2082,7 +2357,7 @@ namespace JUTPS.CharacterBrain
             //Disable Aiming State and Shot State
             IsAiming = false; UsedItem = false;
 
-            if (JUPauseGame.IsPause || IsReloading || IsReloading || IsDead || IsDriving || IsRagdolled || DisableAllMove) { return; }
+            if (JUPauseGame.IsPaused || IsReloading || IsReloading || IsDead || IsDriving || IsRagdolled || DisableAllMove) { return; }
 
 
 
@@ -2104,7 +2379,7 @@ namespace JUTPS.CharacterBrain
         {
             if (HoldableItemInUseRightHand != null)
             {
-                if (HoldableItemInUseRightHand.PushItemFrom == HoldableItem.ItemSwitchPosition.Back)
+                if (HoldableItemInUseRightHand.PushItemFrom == JUHoldableItem.ItemSwitchPosition.Back)
                 {
                     anim.Play("Weapon Switch Back", 5, 0);
                 }
@@ -2116,9 +2391,9 @@ namespace JUTPS.CharacterBrain
         }
         public virtual void PullWeaponBolt()
         {
-            if (WeaponInUseRightHand == null) return;
+            if (RightHandWeapon == null) return;
 
-            if ((WeaponInUseRightHand.FireMode == Weapon.WeaponFireMode.BoltAction) && WeaponInUseRightHand.IsUsingItem == true)
+            if ((RightHandWeapon.FireMode == Weapon.WeaponFireMode.BoltAction) && RightHandWeapon.IsUsingItem == true)
             {
                 IsAiming = false;
 
@@ -2142,7 +2417,7 @@ namespace JUTPS.CharacterBrain
             //Debug.Log("Left hand = " + HoldableItemInUseLeftHand);
             //Debug.Log("Right Hand = " + HoldableItemInUseRightHand);
 
-            //Se eu NÃO tenho um item na mão esquerda
+            // If I DON'T have an item in my left hand
             if (HoldableItemInUseLeftHand == null)
             {
                 //Set Right Hand Parent
@@ -2158,13 +2433,13 @@ namespace JUTPS.CharacterBrain
                     SetRightHandIKPosition(rightHandPosition, rightHandRotation);
 
                     //Smooth Right Hand Transformation
-                    IKPositionRightHand.position = Vector3.Lerp(IKPositionRightHand.position, RightHandIKPositionTarget.position, Speed * Time.deltaTime);
-                    IKPositionRightHand.rotation = Quaternion.Lerp(IKPositionRightHand.rotation, RightHandIKPositionTarget.rotation, Speed * Time.deltaTime);
+                    IKPositionRightHand.position = IsAiming ? rightHandPosition : Vector3.Lerp(IKPositionRightHand.position, RightHandIKPositionTarget.position, Speed * Time.deltaTime);
+                    IKPositionRightHand.rotation = IsAiming ? rightHandRotation : Quaternion.Lerp(IKPositionRightHand.rotation, RightHandIKPositionTarget.rotation, Speed * Time.deltaTime);
                 }
             }
             else
             {
-                //Se eu TENHO um item na mão esquerda
+                // If i HAVE a item in the left hand
                 if (HoldableItemInUseLeftHand.OppositeHandPosition != null && HoldableItemInUseRightHand == null)
                 {
                     //Set Right Hand Parent
@@ -2198,7 +2473,7 @@ namespace JUTPS.CharacterBrain
                     }
                 }
             }
-            RightHandIKPositionTarget.parent = IKPositionRightHand.parent;
+            if (IKPositionRightHand.parent != null) RightHandIKPositionTarget.parent = IKPositionRightHand.parent;
         }
         public void SmoothLeftHandPosition(float Speed = 8)
         {
@@ -2258,7 +2533,7 @@ namespace JUTPS.CharacterBrain
                     }
                 }
             }
-            LeftHandIKPositionTarget.parent = IKPositionLeftHand.parent;
+            if (IKPositionLeftHand.parent != null) LeftHandIKPositionTarget.parent = IKPositionLeftHand.parent;
         }
 
         public void SetRightHandWieldingPositionAndSpace(Transform targetTransform, Transform parent)

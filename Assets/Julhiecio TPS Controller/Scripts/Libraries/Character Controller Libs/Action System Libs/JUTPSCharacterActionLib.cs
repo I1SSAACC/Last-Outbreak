@@ -1,8 +1,5 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using JUTPS;
 using UnityEngine;
-
-using JUTPS;
 
 namespace JUTPSActions
 {
@@ -13,7 +10,7 @@ namespace JUTPSActions
         protected Rigidbody rb;
         protected Collider coll;
         protected Camera cam;
-        public virtual void Awake()
+        protected virtual void Awake()
         {
             TPSCharacter = GetComponent<JUCharacterController>();
             rb = GetComponent<Rigidbody>();
@@ -22,11 +19,15 @@ namespace JUTPSActions
             GetCamera();
             Invoke(nameof(GetCamera), 0.001f);
         }
-        private void GetCamera()
+        protected void GetCamera()
         {
             if (TPSCharacter != null)
             {
                 cam = (TPSCharacter.MyPivotCamera != null) ? TPSCharacter.MyPivotCamera.mCamera : null;
+            }
+            else
+            {
+                cam = FindObjectOfType<Camera>();
             }
         }
     }
@@ -36,12 +37,12 @@ namespace JUTPSActions
         protected float LayerWeight;
 
         public float ActionDuration;
-        private float ActionCurrentTime;
+        [HideInInspector] public float ActionCurrentTime;
 
         public float EnterTransitionSpeed;
         public float ExitTransitionSpeed;
 
-        [SerializeField]protected StateOfAction ActionState;
+        [SerializeField] protected StateOfAction ActionState;
 
         protected bool NoneAction = true, ActionStarted, IsActionPlaying, ActionEnded;
 
@@ -70,12 +71,13 @@ namespace JUTPSActions
             if (ActionCurrentTime < ActionDuration) ActionCurrentTime += Time.deltaTime;
 
             //LAYER WEIGHT 
-            switch (ActionState) {
+            switch (ActionState)
+            {
                 case StateOfAction.Started:
                     LayerWeight = Mathf.MoveTowards(LayerWeight, 0, ExitTransitionSpeed * Time.deltaTime);
                     break;
                 case StateOfAction.Playing:
-                LayerWeight = Mathf.MoveTowards(LayerWeight, 1, EnterTransitionSpeed * Time.deltaTime);
+                    LayerWeight = Mathf.MoveTowards(LayerWeight, 1, EnterTransitionSpeed * Time.deltaTime);
                     break;
                 case StateOfAction.Ended:
                     LayerWeight = Mathf.MoveTowards(LayerWeight, 0, ExitTransitionSpeed * Time.deltaTime);
@@ -172,11 +174,16 @@ namespace JUTPSActions
         {
             ActionCurrentLayerIndex = ((int)BodyPartLayer) + 7;
         }
+        protected void SwitchAnimationLayer(int LayerIndex)
+        {
+            ActionCurrentLayerIndex = LayerIndex;
+        }
+
         protected int GetCurrentAnimationLayer()
         {
             return ActionCurrentLayerIndex;
         }
-        
+
         protected void DisableCharacterMovement(float duration = 0)
         {
             if (TPSCharacter == null) return;
@@ -188,12 +195,20 @@ namespace JUTPSActions
         protected int LasUsedItemID;
         protected void SetCurrentItemIndexToLastUsedItem()
         {
-            if (TPSCharacter.HoldableItemInUseRightHand != null) { LasUsedItemID = TPSCharacter.HoldableItemInUseRightHand.ItemSwitchID; } else { LasUsedItemID = -1; }
+            if (TPSCharacter.HoldableItemInUseRightHand != null)
+            {
+                //LasUsedItemID = JUTPS.InventorySystem.JUInventory.GetGlobalItemSwitchID(TPSCharacter.HoldableItemInUseRightHand, TPSCharacter.Inventory);
+                LasUsedItemID = TPSCharacter.HoldableItemInUseRightHand.ItemSwitchID;
+            }
+            else
+            {
+                LasUsedItemID = -1;
+            }
         }
         protected void DisableItemOnHand()
         {
             //Get Current Item
-            TPSCharacter.SwitchToItem(-1);
+            TPSCharacter.SwitchToItem(0);
         }
         protected void EnableLastUsedItem()
         {

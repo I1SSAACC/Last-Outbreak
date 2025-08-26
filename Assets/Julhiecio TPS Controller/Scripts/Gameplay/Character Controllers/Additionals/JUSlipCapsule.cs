@@ -25,6 +25,9 @@ namespace JUTPS.PhysicsScripts
             if (defaultCapsuleCollider == null || slipCapsule == null) return;
             slipCapsule.isTrigger = defaultCapsuleCollider.isTrigger;
             slipCapsule.enabled = defaultCapsuleCollider.enabled;
+            slipCapsule.center = Center;
+            slipCapsule.radius = Radius;
+            slipCapsule.height = Height;
         }
         public static void GenerateSlipCapsuleCollider(GameObject target, Vector3 Center, float Radius, float Height, out CapsuleCollider outCapsuleCollider)
         {

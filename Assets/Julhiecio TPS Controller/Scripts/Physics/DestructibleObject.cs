@@ -51,7 +51,7 @@ namespace JUTPS.DestructibleSystem
                 {
                     JUSlowmotion.DoSlowMotion(0.1f, 5f);
                 }
-                if (DoSlowmotionWhenPlayerIsJumping && FindFirstObjectByType<JUCharacterController>().IsJumping)
+                if (DoSlowmotionWhenPlayerIsJumping && FindObjectOfType<JUCharacterController>().IsJumping)
                 {
                     JUSlowmotion.DoSlowMotion(0.1f, 5f);
                 }

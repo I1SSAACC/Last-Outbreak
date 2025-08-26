@@ -2,45 +2,154 @@ using UnityEngine;
 using UnityEngine.Events;
 using JUTPS.InputEvents;
 using JUTPSEditor.JUHeader;
+
 namespace JUTPS
 {
-    [AddComponentMenu(Constants.ComponentMenuNames.PauseGame)]
+    /// <summary>
+    /// The pause game system.
+    /// </summary>
+    [AddComponentMenu("JU TPS/Utilities/JU Pause Game")]
     public class JUPauseGame : MonoBehaviour
     {
-        public static JUPauseGame Instance;
-        public static bool IsPause;
-        
+        private static JUPauseGame _instance;
+        private FX.JUSlowmotion _slowmotionInstance;
+
+        /// <summary>
+        /// If true, the user can pause the game using the inputs.
+        /// </summary>
+        [JUHeader("Pause Input")]
+        public bool ControlsEnabled;
+
+        /// <summary>
+        /// The inputs used to pause/continue the game.
+        /// </summary>
         public MultipleActionEvent PauseInputs;
 
+        /// <summary>
+        /// Called when the game is paused.
+        /// </summary>
         [JUHeader("On Pause Events")]
         public UnityEvent OnPause;
-        public UnityEvent OnUnpause;
-        private FX.JUSlowmotion SlowmotionInstance;
 
-        private void Start()
+        /// <summary>
+        /// Called when the game is unpaused.
+        /// </summary>
+        public UnityEvent OnContinue;
+
+        /// <summary>
+        /// If true, the player can pause or unpause the game.
+        /// </summary>
+        public static bool AllowSetPaused { get; set; }
+
+        /// <summary>
+        /// Return true if the game is paused.
+        /// </summary>
+        public static bool IsPaused { get; private set; }
+
+        /// <summary>
+        /// Returns the pause manager on the scene, if not exist, create one. Can have only one instance.
+        /// </summary>
+        public static JUPauseGame Instance
         {
-            Instance = this;
-            SlowmotionInstance = FindFirstObjectByType<FX.JUSlowmotion>();
-            PauseInputs.OnButtonsDown.AddListener(Pause);
+            get
+            {
+                if (!_instance)
+                {
+                    _instance = FindObjectOfType<JUPauseGame>(true);
+
+                    if (!_instance)
+                    {
+                        _instance = new GameObject("JU Pause Game").AddComponent<JUPauseGame>();
+                        _instance.PauseInputs.OnButtonsDown.AddListener(Pause);
+                    }
+                }
+                return _instance;
+            }
         }
 
-        private void OnEnable() =>
-            PauseInputs.Enable();
+        /// <summary>
+        /// Create an instance of the <seealso cref="JUPauseGame"/> component.
+        /// </summary>
+        public JUPauseGame()
+        {
+            ControlsEnabled = true;
+        }
 
-        private void OnDisable() =>
+        private void Awake()
+        {
+            if (this != Instance)
+            {
+                Destroy(this);
+                return;
+            }
+
+            AllowSetPaused = true;
+
+            _slowmotionInstance = FindObjectOfType<FX.JUSlowmotion>();
+            PauseInputs.OnButtonsDown.AddListener(OnPressPauseInput);
+        }
+
+        private void OnEnable()
+        {
+            PauseInputs.Enable();
+        }
+
+        private void OnDisable()
+        {
             PauseInputs.Disable();
-        
+        }
+
+        private void OnDestroy()
+        {
+            // Fix problem on unload the current scene if the game is paused, 
+            // after load another scene the IsPaused continues as true.
+            Continue();
+            AllowSetPaused = true;
+        }
+
+        private void OnPressPauseInput()
+        {
+            if (!ControlsEnabled)
+                return;
+
+            SetPaused(!IsPaused);
+        }
+
+        /// <summary>
+        /// Pause the game.
+        /// </summary>
         public static void Pause()
         {
-            IsPause = !IsPause;
-            Time.timeScale = IsPause ? 0 : 1;
+            SetPaused(true);
+        }
 
-            if (IsPause) 
-                Instance.OnPause.Invoke();
-            else 
-                Instance.OnUnpause.Invoke();
+        /// <summary>
+        /// Continue the game if is paused.
+        /// </summary>
+        public static void Continue()
+        {
+            SetPaused(false);
+        }
 
-            Instance.SlowmotionInstance.EnableSlowmotion = !IsPause;
+        /// <summary>
+        /// Set the game as paused of unpaused.
+        /// </summary>
+        /// <param name="paused">If true, the game is paused, freezing the time, if not, the game will be continued.</param>
+        public static void SetPaused(bool paused)
+        {
+            Debug.Assert(Instance, $"There is no a {nameof(JUPauseGame)} instance on the scene.");
+
+            if (IsPaused == paused || !AllowSetPaused)
+                return;
+
+            IsPaused = !IsPaused;
+            Time.timeScale = IsPaused ? 0 : 1;
+
+            if (Instance._slowmotionInstance)
+                Instance._slowmotionInstance.EnableSlowmotion = !IsPaused;
+
+            if (IsPaused) Instance.OnPause.Invoke();
+            else Instance.OnContinue.Invoke();
         }
     }
 }

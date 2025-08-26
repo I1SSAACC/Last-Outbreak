@@ -1,94 +1,166 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 using JUTPS.JUInputSystem;
+using System.Security.Permissions;
 
 namespace JUTPS.VehicleSystem
 {
+    /// <summary>
+    /// Ju car controller.
+    /// </summary>
     [AddComponentMenu("JU TPS/Vehicle System/Car Controller")]
-    public class CarController : Vehicle
+    public class CarController : JUWheeledVehicle
     {
-        [Header("Wheels")]
-        public WheelCollider[] WheelColliders;
-        public Transform[] WheelModels;
+        /// <summary>
+        /// Stores a <see cref="WheelCollider"/> from each side of the vehicle axle and properties of wheels behavior.
+        /// </summary>
+        [System.Serializable]
+        public struct WheelAxle
+        {
+            /// <summary>
+            /// The acceleration influence on this axle, a value between 0 to 1.
+            /// </summary>
+            [Header("Drive")]
+            [Range(0, 1)] public float ThrottleInfluence;
 
-        [Header("Anti Overturn")]
+            /// <summary>
+            /// The brake influence on this axle, a value between 0 to 1.
+            /// </summary>
+            [Range(0, 1)] public float BrakeInfluence;
+
+            /// <summary>
+            /// The max steer steer angle on this axle, a value between -180 to 180.
+            /// </summary>
+            [Range(-180, 180)] public float MaxSteerAngle;
+
+            /// <summary>
+            /// The left <see cref="WheelCollider"/> of the axle.
+            /// </summary>
+            [Header("Left")]
+            public WheelCollider LeftWheelCollider;
+
+            /// <summary>
+            /// The left wheel model that will follow the <see cref="LeftWheelCollider"/> position and rotation.
+            /// </summary>
+            public Transform LeftWheelMesh;
+
+            /// <summary>
+            /// The right <see cref="WheelCollider"/> of the axle.
+            /// </summary>
+            [Header("Right")]
+            public WheelCollider RightWheelCollider;
+
+            /// <summary>
+            /// The right wheel model that will follow the <see cref="RightWheelCollider"/> position and rotation.
+            /// </summary>
+            public Transform RightWheelMesh;
+        }
+
+        [SerializeField] private WheelAxle[] _wheelAxles;
+
+        /// <summary>
+        /// Align vehicle on ground normal when grounded.
+        /// </summary>
         public VehicleOverturnCheck OverturnCheck;
 
-        [Header("Settings")]
-        public bool UseDefaultInputs = true;
-
-        private void Start()
+        /// <summary>
+        /// Gets or set the vehicle wheels axles, don't forgot call <see cref="UpdateWheelsData"/> after change the wheels.
+        /// </summary>
+        public WheelAxle[] WheelAxles
         {
-            CreateSteeringWheelRotationPivot(SteeringWheel);
-            SetVehicleCenterOfMass(VehicleEngine.CenterOfMass);
-        }
-        protected override void VehicleUpdate()
-        {
-            //Ground Check
-            GroundCheck.GroundCheck(transform);
-
-            //Set default inputs
-            if (UseDefaultInputs)
+            get => _wheelAxles;
+            set
             {
-                SetEngineInputs(
-                JUInput.GetAxis(JUInput.Axis.MoveHorizontal),   //Left/Right Input Value
-                JUInput.GetAxis(JUInput.Axis.MoveVertical),     //Forward/Backward Input Value
-                JUInput.GetButton(JUInput.Buttons.JumpButton)); //Brake Vehicle Input Value
+                _wheelAxles = value;
+                UpdateWheelsData();
             }
+        }
 
-            //Anti Overturn
+        /// <summary>
+        /// Create a ju car vehicle controller component instance.
+        /// </summary>
+        public CarController() : base()
+        {
+            _wheelAxles = new WheelAxle[2]
+            {
+                new WheelAxle
+                {
+                    ThrottleInfluence = 1f,
+                    BrakeInfluence = 1f,
+                    MaxSteerAngle = 35,
+                    LeftWheelCollider = null,
+                    RightWheelCollider = null,
+                    LeftWheelMesh = null,
+                    RightWheelMesh = null
+                },
+                new WheelAxle
+                {
+                    ThrottleInfluence = 1f,
+                    BrakeInfluence = 1f,
+                    MaxSteerAngle = 0,
+                    LeftWheelCollider = null,
+                    RightWheelCollider = null,
+                    LeftWheelMesh = null,
+                    RightWheelMesh = null
+                }
+            };
+        }
+
+#if UNITY_EDITOR
+
+        /// <inheritdoc/>
+        protected override void OnValidate()
+        {
+            base.OnValidate();
+
+            // Update the wheels when set in runtime on the editor.
+            UpdateWheelsData();
+        }
+#endif
+
+        /// <inheritdoc/>
+        protected override void Start()
+        {
+            base.Start();
+        }
+
+        /// <inheritdoc/>
+        protected override void Update()
+        {
+            base.Update();
+
+            if (!IsOn)
+                return;
+
             OverturnCheck.OverturnCheck(transform);
             OverturnCheck.AntiOverturn(transform);
-
-            //Update Wheel Models
-            for (int i = 0; i < WheelColliders.Length; i++)
-            {
-                UpdateWheelModelTransformation(WheelColliders[i], WheelModels[i]);
-            }
-
-            //Steering Wheel Rotation
-            SteeringWheel.transform.localEulerAngles = SteeringWheelRotation(SteeringWheel, WheelColliders[0], 2).eulerAngles;
-        }
-        protected override void VehiclePhysicsUpdate()
-        {
-            //Turn Off Vehicle
-            if (!IsOn)
-            {
-                //Set Wheels torque and brake
-                for (int i = 0; i < WheelColliders.Length; i++)
-                {
-                    WheelBrake(WheelColliders[i]);
-                }
-                return;
-            }
-            //Set Wheels torque and brake
-            for (int i = 0; i < WheelColliders.Length; i++)
-            {
-                WheelTorque(WheelColliders[i]);
-                WheelBrake(WheelColliders[i]);
-            }
-
-            //Get Steer Angle direction
-            float SteerAngleDirection = Mathf.Lerp(GetSmoothedHorizontalMovement(), GetSmoothedHorizontalMovement() / 4, GetSmoothedForwardMovement() * GetVehicleCurrentSpeed(0.1f));
-
-            //Set Front Wheels Steer Angle
-            WheelSteerAngle(WheelColliders[0], SteerAngleDirection * MaxSteerAngle, MaxSteerAngle);
-            WheelSteerAngle(WheelColliders[1], SteerAngleDirection * MaxSteerAngle, MaxSteerAngle);
-
-            //On Air Rotation
-            if (GroundCheck.IsGrounded == false) Align(Vector3.up, 0.5f);
-
-            //Limit Speed
-            LimitVehicleSpeed(GroundCheck.IsGrounded, false);
         }
 
-        private void OnDrawGizmos()
+        /// <inheritdoc/>
+        protected override void OnDrawGizmos()
         {
-            VehicleGizmo.DrawVector3Position(CharacterExitingPosition, transform, "Exit Position", Color.green);
+            base.OnDrawGizmos();
             VehicleGizmo.DrawOverturnCheck(OverturnCheck, transform);
-            VehicleGizmo.DrawVehicleGroundCheck(GroundCheck, transform);
+
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawWireSphere(Engine.CenterOfMass, 0.2f);
+        }
+
+        /// <inheritdoc/>
+        public override void UpdateWheelsData()
+        {
+            base.UpdateWheelsData();
+
+            WheelsData = new WheelData[WheelAxles.Length * 2];
+
+            for (int i = 0; i < WheelAxles.Length; i++)
+            {
+                int leftWhel = i * 2;
+                int rightWheel = (i * 2) + 1;
+
+                WheelAxle axle = WheelAxles[i];
+                WheelsData[leftWhel] = new WheelData(axle.LeftWheelCollider, axle.LeftWheelMesh, false, axle.ThrottleInfluence, axle.BrakeInfluence, axle.MaxSteerAngle);
+                WheelsData[rightWheel] = new WheelData(axle.RightWheelCollider, axle.RightWheelMesh, false, axle.ThrottleInfluence, axle.BrakeInfluence, axle.MaxSteerAngle);
+            }
         }
     }
-
 }

@@ -176,6 +176,7 @@ GameObject:
   - component: {fileID: 3243631560226216739}
   - component: {fileID: 3243631560226216736}
   - component: {fileID: 23890697}
+  - component: {fileID: -1193399595824119269}
   m_Layer: 0
   m_Name: ThirdPerson Camera Controller
   m_TagString: Untagged
@@ -226,6 +227,8 @@ MonoBehaviour:
   CustomCameraStates: []
   GeneralSensibility: 1
   GeneralVerticalSensibility: 1
+  InvertHorizontal: 0
+  InvertVertical: 0
   rotX: 0
   rotY: 0
   rotxtarget: 0
@@ -233,6 +236,7 @@ MonoBehaviour:
   CameraRecoilReaction: 1
   RecoilRotateCamera: 1
   CameraRecoilSensibility: 0.5
+  InputAsset: {fileID: 11400000, guid: aca8a726812237f4697ed31b7f3e8818, type: 2}
   characterTarget: {fileID: 0}
   FollowUpTarget: 0
   EnableAutoRotator: 0
@@ -241,6 +245,11 @@ MonoBehaviour:
   EnableVehicleAutoRotation: 1
   VehicleAutoRotateTime: 3
   VehicleAutoRotationSpeed: 8
+  AimingSwaySettings:
+    EnableWeaponSway: 1
+    GeneralIntensity: 1
+    HorizontalIntensity: 1
+    VerticalIntensity: 1
   NormalCameraState:
     StateName: Normal Camera State
     Distance: 3
@@ -307,7 +316,7 @@ MonoBehaviour:
     RightTargetOffset: 0
     ForwardTargetOffset: 0
     RightCameraOffset: 0
-    UpCameraOffset: 0.6
+    UpCameraOffset: 1.5
     ForwardCameraOffset: 0
     RotationSensibility: 1
     VerticalRotationSensibility: 0.7
@@ -356,6 +365,19 @@ MonoBehaviour:
   TargetsTagsAndOffsets:
   - Tag: Enemy
     UpOffset: 1
+--- !u!114 &-1193399595824119269
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3243631560226216737}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6fea81b23f2c33247a7457a083a939bb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  CameraController: {fileID: 3243631560226216736}
 --- !u!1 &8582740922879513078
 GameObject:
   m_ObjectHideFlags: 0

@@ -1,9 +1,9 @@
 ﻿using UnityEngine;
 using UnityEditor;
 using System.Reflection;
-
 namespace JUTPSEditor.JUHeader
-{
+{ 
+
     [System.AttributeUsage(System.AttributeTargets.All, AllowMultiple = true, Inherited = true)]
     public class JUHeader : PropertyAttribute
     {
@@ -14,6 +14,8 @@ namespace JUTPSEditor.JUHeader
             this.text = text;
         }
     }
+
+
 
     [System.AttributeUsage(System.AttributeTargets.All, AllowMultiple = true, Inherited = true)]
     public class JUSubHeader : PropertyAttribute
@@ -33,7 +35,6 @@ namespace JUTPSEditor.JUHeader
         public string ConditionPropertyName;
         public bool Inverse;
         public bool DisableOnFalse;
-
         public JUReadOnly(string conditionPropertyName = "", bool inverse = false, bool disableonfalse = true)
         {
             this.ConditionPropertyName = conditionPropertyName;
@@ -67,7 +68,7 @@ namespace JUTPSEditor.JUHeader
     }
 
 
-#if UNITY_EDITOR
+#if UNITY_EDITOR && !ODIN_INSPECTOR
 
     [CustomPropertyDrawer(typeof(JUHeader))]
     class JUHeaderDecoratorDrawer : DecoratorDrawer
@@ -84,10 +85,25 @@ namespace JUTPSEditor.JUHeader
 
         public override void OnGUI(Rect position)
         {
+            //float lineX = (position.x + (position.width / 2)) - header.lineWidth / 2;
             float lineY = position.y + 0;
-            GUIStyle g = new(EditorStyles.toolbar);
+            //float lineWidth = header.lineWidth;
+
+            var g = new GUIStyle(EditorStyles.toolbar);
+            //g.fontStyle = FontStyle.Bold;
             g.alignment = TextAnchor.LowerLeft;
-            g.normal.textColor = EditorGUIUtility.isProSkin ? Color.white : Color.black;
+            //g.font = JUEditor.CustomEditorStyles.JUEditorFont();
+
+            if (EditorGUIUtility.isProSkin == false)
+            {
+                g.normal.textColor = Color.black;
+            }
+            else
+            {
+                g.normal.textColor = Color.white;
+            }
+
+            //g.normal.textColor = new Color(1f, 0.7f, 0.5f);
             g.fontSize = 16;
             g.richText = true;
             Rect newposition = new Rect(position.x - 17, lineY, position.width + 28, position.height);
@@ -219,7 +235,7 @@ namespace JUTPSEditor.JUHeader
             JUButton tAttribute = attribute as JUButton;
 
             UnityEngine.Object theObject = Selection.activeGameObject.GetComponent(tAttribute.ClassType) as UnityEngine.Object;
-
+            
             if (jubutton.methodName == "")
             {
                 GUI.Button(position, jubutton.labelText);
@@ -234,5 +250,10 @@ namespace JUTPSEditor.JUHeader
             }
         }
     }
+
+    
+
 #endif
 }
+
+

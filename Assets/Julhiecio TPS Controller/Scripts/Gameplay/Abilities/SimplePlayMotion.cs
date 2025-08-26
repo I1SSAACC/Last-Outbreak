@@ -51,7 +51,7 @@ namespace JUTPS.ActionScripts
         {
             if (IsActionPlaying == false) return;
             if (ForceFireMode) TPSCharacter.FiringMode = true;
-            if (ForceNoFireMode) TPSCharacter.FiringMode = false;
+            if (ForceNoFireMode) { TPSCharacter.FiringMode = false; }
         }
     }
 

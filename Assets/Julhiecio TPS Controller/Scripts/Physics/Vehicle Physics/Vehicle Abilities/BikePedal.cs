@@ -8,7 +8,7 @@ namespace JUTPS.VehicleSystem
     public class BikePedal : MonoBehaviour
     {
         [Header("Pedal Rotation")]
-        public Vehicle Bike;
+        public MotorcycleController Bike;
         public WheelCollider BackWheel;
         public float PedalRotateSpeed = 0.2f;
         public Transform RightPedal, LeftPedal;
@@ -19,13 +19,13 @@ namespace JUTPS.VehicleSystem
 
         void Start()
         {
-            Bike = GetComponentInParent<Vehicle>();
+            Bike = GetComponentInParent<MotorcycleController>();
             if (FootUpOrientator == null && Bike != null) FootUpOrientator = Bike.transform;
         }
         void Update()
         {
-            if (BackWheel == null || FootUpOrientator == null || Bike == null || LeftFootTarget == null || RightFootTarget == null || !Bike.GroundCheck.IsGrounded) return;
-            transform.Rotate(BackWheel.motorTorque * (PedalRotateSpeed * Bike.GetVehicleCurrentSpeed() / Bike.VehicleEngine.MaxVelocity) * Time.deltaTime, 0, 0);
+            if (BackWheel == null || FootUpOrientator == null || Bike == null || LeftFootTarget == null || RightFootTarget == null || !Bike.IsGrounded) return;
+            transform.Rotate(BackWheel.motorTorque * (PedalRotateSpeed * Mathf.Abs(Bike.ForwardSpeed) / Bike.Engine.MaxForwardSpeed) * Time.deltaTime, 0, 0);
 
             Quaternion rightRotation = Quaternion.FromToRotation(RightPedal.up, FootUpOrientator.up) * RightPedal.rotation;
             RightPedal.rotation = rightRotation;

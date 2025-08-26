@@ -1,59 +1,85 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEditor;
 using JUTPS.PhysicsScripts;
+
 namespace JUTPS.CustomEditors
 {
+    /// <summary>
+    /// Custom editor of the <see cref="AdvancedRagdollController"/> component.
+    /// </summary>
     [CustomEditor(typeof(AdvancedRagdollController))]
     public class AdvancedRagdollEditor : Editor
     {
-        public Texture2D ImageBanner = null;
-        public bool ViewSettings;
-        public bool ViewStates;
-        public bool EnableDebugging;
+        private bool _isSettingsOpen;
+        private bool _isStatesOpen;
+        private bool _isDebugEnabled;
+
+        /// <summary>
+        /// The <see cref="AdvancedRagdollController"/> instance of this editor.
+        /// </summary>
+        public AdvancedRagdollController RagdollController
+        {
+            get => (AdvancedRagdollController)target;
+        }
+
+        private void OnEnable()
+        {
+            // Loading editor state
+            _isSettingsOpen = EditorPrefs.GetBool($"{nameof(AdvancedRagdollController)}.{nameof(_isSettingsOpen)}");
+            _isStatesOpen = EditorPrefs.GetBool($"{nameof(AdvancedRagdollController)}.{nameof(_isStatesOpen)}");
+            _isDebugEnabled = EditorPrefs.GetBool($"{nameof(AdvancedRagdollController)}.{nameof(_isDebugEnabled)}");
+
+            if (RagdollController.RagdollBones == null || RagdollController.RagdollBones.Length == 0)
+                RagdollController.StartAdvancedRagdollController();
+        }
+
+        private void OnDestroy()
+        {
+            // Saving editor state
+            EditorPrefs.SetBool($"{nameof(AdvancedRagdollController)}.{nameof(_isSettingsOpen)}", _isSettingsOpen);
+            EditorPrefs.SetBool($"{nameof(AdvancedRagdollController)}.{nameof(_isStatesOpen)}", _isStatesOpen);
+            EditorPrefs.SetBool($"{nameof(AdvancedRagdollController)}.{nameof(_isDebugEnabled)}", _isDebugEnabled);
+        }
+
+        /// <inheritdoc/>
         public override void OnInspectorGUI()
         {
             serializedObject.Update();
-            AdvancedRagdollController rag = (AdvancedRagdollController)target;
 
             JUTPSEditor.CustomEditorUtilities.JUTPSTitle("Advanced Ragdoll Controller");
-
-            if (rag.RagdollBones == null)
+            if (RagdollController.RagdollBones == null)
             {
                 GUILayout.Label("No Ragdoll Bones found, please create a Ragdoll", JUTPSEditor.CustomEditorStyles.ErrorStyle());
-                rag.StartAdvancedRagdollController();
+                RagdollController.StartAdvancedRagdollController();
             }
-            else if (rag.RagdollBones.Length > 0)
+            else if (RagdollController.RagdollBones.Length > 0)
             {
                 //SETTINGS
-                ViewSettings = GUILayout.Toggle(ViewSettings, "Ragdoll Transition Blending Settings", JUTPSEditor.CustomEditorStyles.Toolbar());
-                if (ViewSettings)
+                _isSettingsOpen = GUILayout.Toggle(_isSettingsOpen, "Ragdoll Transition Blending Settings", JUTPSEditor.CustomEditorStyles.Toolbar());
+                if (_isSettingsOpen)
                 {
-                    serializedObject.FindProperty("TimeToGetUp").floatValue = EditorGUILayout.Slider("  Time To Get Up", rag.TimeToGetUp, 1f, 4f);
-                    serializedObject.FindProperty("BlendSpeed").floatValue = EditorGUILayout.Slider("  Blend Speed", rag.BlendSpeed, 0f, 4f);
-                    serializedObject.FindProperty("RagdollDrag").floatValue = EditorGUILayout.Slider("  Ragdoll Bones Drag", rag.RagdollDrag, 0.001f, 4f);
+                    serializedObject.FindProperty(nameof(RagdollController.TimeToGetUp)).floatValue = EditorGUILayout.Slider("  Time To Get Up", RagdollController.TimeToGetUp, 1f, 4f);
+                    serializedObject.FindProperty(nameof(RagdollController.BlendSpeed)).floatValue = EditorGUILayout.Slider("  Blend Speed", RagdollController.BlendSpeed, 0f, 4f);
+                    serializedObject.FindProperty(nameof(RagdollController.RagdollDrag)).floatValue = EditorGUILayout.Slider("  Ragdoll Bones Drag", RagdollController.RagdollDrag, 0.001f, 4f);
                 }
 
                 //STATE
-                ViewStates = GUILayout.Toggle(ViewStates, "Ragdoll States", JUTPSEditor.CustomEditorStyles.Toolbar());
-                if (ViewStates)
-                    GUILayout.Label(rag.State.ToString(), JUTPSEditor.CustomEditorStyles.EnabledStyle());
+                _isStatesOpen = GUILayout.Toggle(_isStatesOpen, "Ragdoll States", JUTPSEditor.CustomEditorStyles.Toolbar());
+                if (_isStatesOpen)
+                    GUILayout.Label(RagdollController.State.ToString(), JUTPSEditor.CustomEditorStyles.EnabledStyle());
 
                 //DEBUG
-                EnableDebugging = GUILayout.Toggle(EnableDebugging, "Debugging", JUTPSEditor.CustomEditorStyles.Toolbar());
-                if (EnableDebugging == true)
+                _isDebugEnabled = GUILayout.Toggle(_isDebugEnabled, "Debugging", JUTPSEditor.CustomEditorStyles.Toolbar());
+                if (_isDebugEnabled == true)
                 {
-                    serializedObject.FindProperty("RagdollWhenPressKeyG").boolValue = EditorGUILayout.Toggle("  Ragdoll When Press G", rag.RagdollWhenPressKeyG);
-                    serializedObject.FindProperty("ViewBodyDirection").boolValue = EditorGUILayout.Toggle("  View Body Direction", rag.ViewBodyDirection);
-                    serializedObject.FindProperty("ViewBodyPhysics").boolValue = EditorGUILayout.Toggle("  View Body Phyics", rag.ViewBodyPhysics);
-                    serializedObject.FindProperty("ViewHumanBodyBones").boolValue = EditorGUILayout.Toggle("  View Body Bones", rag.ViewHumanBodyBones);
+                    serializedObject.FindProperty(nameof(RagdollController.RagdollWhenPressKeyG)).boolValue = EditorGUILayout.Toggle("  Ragdoll When Press G", RagdollController.RagdollWhenPressKeyG);
+                    serializedObject.FindProperty(nameof(RagdollController.ViewBodyDirection)).boolValue = EditorGUILayout.Toggle("  View Body Direction", RagdollController.ViewBodyDirection);
+                    serializedObject.FindProperty(nameof(RagdollController.ViewBodyPhysics)).boolValue = EditorGUILayout.Toggle("  View Body Phyics", RagdollController.ViewBodyPhysics);
+                    serializedObject.FindProperty(nameof(RagdollController.ViewHumanBodyBones)).boolValue = EditorGUILayout.Toggle("  View Body Bones", RagdollController.ViewHumanBodyBones);
                 }
-
-                //DrawDefaultInspector();
             }
+
             serializedObject.ApplyModifiedProperties();
         }
     }
 }
-

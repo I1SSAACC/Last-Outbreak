@@ -379,7 +379,14 @@ namespace JUTPS
             return NewAnimationBodyPosition;
         }
 
-
+        public void FootIKSmoothDisable(bool enabled)
+        {
+            SmoothIKTransition = enabled;
+        }
+        public void IKBodyPlacingDisable(bool enabled)
+        {
+            EnableDynamicBodyPlacing = enabled;
+        }
         private void OnAnimatorIK(int layerIndex)
         {
             if (Vector3.Angle(transform.up, Vector3.up) > 30 && EnableFootPlacement)

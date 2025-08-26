@@ -113,8 +113,9 @@ namespace JUTPS.FX
                 }
                 else
                 {
-                    Debug.LogWarning("Camera Current no found");
-                    return null;
+                    return FindObjectOfType<Shaker>(true);
+                    //Debug.LogWarning("Camera Current no found");
+                    //return null;
                 }
             }
             else

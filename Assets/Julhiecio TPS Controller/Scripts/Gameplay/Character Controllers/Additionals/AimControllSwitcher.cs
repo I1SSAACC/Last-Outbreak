@@ -14,7 +14,7 @@ namespace JUTPS.CrossPlataform
 
         void Update()
         {
-            if (JUInputManager.IsUsingGamepad == false && JUGameManager.IsMobile == false)
+            if (JUInputManager.IsUsingGamepad == false && JUGameManager.IsMobileControls == false)
             {
                 MouseLooker.enabled = true;
                 JoystickLooker.enabled = false;

@@ -6,9 +6,10 @@ using JUTPSEditor.JUHeader;
 namespace JUTPS.ItemSystem
 {
 
-    public class ThrowableItem : HoldableItem
+    public class ThrowableItem : JUHoldableItem
     {
         [JUHeader("Throw Settings")]
+        public GameObject ActiveOnThrow;
         public string AnimationTriggerParameterName = "Throw";
         public float ThrowForce = 10, ThrowUpForce = 10, RotationForce = 10;
         //public float ItemMass;
@@ -17,6 +18,15 @@ namespace JUTPS.ItemSystem
         public Vector3 DirectionToThrow = Vector3.forward;
 
         [HideInInspector] public bool IsThrowed = false;
+
+        protected override void Start()
+        {
+            base.Start();
+
+            if (ActiveOnThrow && IsThrowed)
+                ActiveOnThrow.SetActive(true);
+        }
+
         public override void UseItem()
         {
             if (ItemQuantity <= 0 || CanUseItem == false || IsThrowed == true) return;

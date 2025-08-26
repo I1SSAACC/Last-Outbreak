@@ -17,7 +17,7 @@ namespace JUTPS.CameraSystems
         private JUCameraController mCameraController;
         void Awake()
         {
-            mCameraController = FindFirstObjectByType<JUCameraController>();
+            mCameraController = FindObjectOfType<JUCameraController>();
         }
 
         // Update is called once per frame

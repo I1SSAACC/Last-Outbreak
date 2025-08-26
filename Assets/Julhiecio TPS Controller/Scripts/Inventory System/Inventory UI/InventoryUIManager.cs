@@ -1,25 +1,21 @@
-﻿using System.Collections;
+﻿using JUTPS.CameraSystems;
+using JUTPS.ItemSystem;
+using JUTPSEditor.JUHeader;
 using System.Collections.Generic;
 using System.Linq;
-
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.InputSystem.Layouts;
-
-using JUTPS.JUInputSystem;
-using JUTPS.ItemSystem;
-using JUTPS.CameraSystems;
-using JUTPSEditor.JUHeader;
 
 
 namespace JUTPS.InventorySystem.UI
 {
-
     public class InventoryUIManager : MonoBehaviour
     {
+        private JUCharacterController _character;
+
         [JUHeader("Inventory Settings")]
         public GameObject InventoryScreen;
-        public JUInventory TargetInventory;
+        [SerializeField] private JUInventory _targetInventory;
         public InventorySlotUI SlotPrefab;
 
         public bool HideCursorWhenExitInventory, LockCursorWhenExitInventory;
@@ -30,6 +26,7 @@ namespace JUTPS.InventorySystem.UI
         public int SlotsQuantity = -1;
         public GridLayoutGroup InventoryScrollViewContent;
         public List<InventorySlotUI> Slots = new List<InventorySlotUI>();
+        public List<InventorySlotUI> EquipmentSlots = new List<InventorySlotUI>();
         private RectTransform inventoryScrollViewRectTransform;
 
         [JUHeader("Loot View Settings")]
@@ -39,6 +36,21 @@ namespace JUTPS.InventorySystem.UI
         public LayerMask CharacterLayer;
         public float CheckLootRadius = 1f;
         private JUInventory LootToGetItems;
+
+        public JUInventory TargetInventory
+        {
+            get => _targetInventory;
+            set
+            {
+                _targetInventory = value;
+                _character = null;
+
+                if (_targetInventory)
+                {
+                    _character = _targetInventory.GetComponent<JUCharacterController>();
+                }
+            }
+        }
 
         void Awake()
         {
@@ -53,8 +65,8 @@ namespace JUTPS.InventorySystem.UI
 
             if (TargetInventory == null)
             {
-                JUInventory inventory = GameObject.FindGameObjectWithTag("Player").GetComponent<JUInventory>();
-                TargetInventory = inventory;
+                var playerObj = GameObject.FindGameObjectWithTag("Player");
+                TargetInventory = playerObj.GetComponent<JUInventory>();
             }
             if (TargetInventory == null)
             {
@@ -112,6 +124,7 @@ namespace JUTPS.InventorySystem.UI
                         {
                             ClearAllSlots();
                             LootToGetItems = null;
+                            TargetInventory = null;
                             ExitInventory();
                         }
                     }
@@ -122,16 +135,21 @@ namespace JUTPS.InventorySystem.UI
                     {
                         ClearAllSlots();
                         LootToGetItems = null;
+                        TargetInventory = null;
                         ExitInventory();
                     }
                 }
+
+                if (InventoryScreen.activeInHierarchy && LootToGetItems == null || TargetInventory == null) { ExitInventory(); }
                 return;
             }
-            
-            if (JUInputSystem.JUInput.GetButtonDown(JUInputSystem.JUInput.Buttons.OpenInventory))
+
+            if (TargetInventory && TargetInventory.PlayerInputs && TargetInventory.PlayerInputs.IsOpenInventoryTriggered && !JUPauseGame.IsPaused)
             {
                 if (!InventoryScreen.activeInHierarchy) { OpenInventory(); } else { ExitInventory(); }
             }
+            else if (TargetInventory && !TargetInventory.PlayerInputs)
+                Debug.LogError($"The player inventory {TargetInventory.name} hasn't an input asset.");
         }
         public void OpenInventory()
         {
@@ -144,6 +162,13 @@ namespace JUTPS.InventorySystem.UI
                 JUCameraController.LockMouse(false, false);
             }
 
+            JUPauseGame.AllowSetPaused = false;
+
+            if (_character)
+            {
+                _character.DisableLocomotion();
+            }
+
         }
         public void ExitInventory()
         {
@@ -152,6 +177,12 @@ namespace JUTPS.InventorySystem.UI
             InventoryScreen.SetActive(false);
             if (IsLootView) return;
             JUCameraController.LockMouse(LockCursorWhenExitInventory, HideCursorWhenExitInventory);
+            JUPauseGame.AllowSetPaused = false;
+
+            if (_character)
+            {
+                _character.enableMove();
+            }
         }
 
         public static void CreateInventorySlots(ref List<InventorySlotUI> SlotsList, int SlotQuantity, JUInventory inventory, InventorySlotUI slotPrefab, GridLayoutGroup scrollViewContentGridLayout)
@@ -214,7 +245,7 @@ namespace JUTPS.InventorySystem.UI
             foreach (InventorySlotUI slot in Slots)
             {
                 slot.HideOptions();
-                slot.EnableOptions = enabled;
+                slot.EnableOptionsPanel = enabled;
             }
         }
         public void RefreshAllSlots()
@@ -225,7 +256,7 @@ namespace JUTPS.InventorySystem.UI
                 //Delete duplicated slots
                 foreach (InventorySlotUI slotToVerify in Slots)
                 {
-                    if (currentSlot != slotToVerify && currentSlot.ItemIDToDraw == slotToVerify.ItemIDToDraw)
+                    if ((currentSlot != slotToVerify && currentSlot.ItemIDToDraw == slotToVerify.ItemIDToDraw) || IsItemInEquipmentSlots(slotToVerify.ItemIDToDraw))
                     {
                         slotToVerify.ItemIDToDraw = -2;
                         slotToVerify.RefreshSlot();
@@ -233,34 +264,44 @@ namespace JUTPS.InventorySystem.UI
                 }
             }
 
-            List<Item> NonDrawedItems = GetNonDrawedItems(TargetInventory.AllItems, Slots, FilterLeftHandItems);
+            List<JUItem> NonDrawedItems = GetNonDrawedItems(TargetInventory.AllItems, Slots, FilterLeftHandItems);
             SetupNonDrawedItemsInSlots(NonDrawedItems, inventory: this);
         }
-        public static void SetupNonDrawedItemsInSlots(List<Item> nonDrawedItems, InventoryUIManager inventory)
+
+        private bool IsItemInEquipmentSlots(int itemID)
+        {
+            foreach (InventorySlotUI slot in EquipmentSlots)
+            {
+                if (itemID == slot.ItemIDToDraw) return true;
+            }
+            return false;
+        }
+
+        public static void SetupNonDrawedItemsInSlots(List<JUItem> nonDrawedItems, InventoryUIManager inventory)
         {
             if (nonDrawedItems.Count == 0 || inventory == null || inventory.Slots.Count == 0) return;
 
-            foreach (Item item in nonDrawedItems)
+            foreach (JUItem item in nonDrawedItems)
             {
-                //GET EMPTY SLOT
+                // GET EMPTY SLOT
                 InventorySlotUI emptySlot = GetFirstEmptySlot(inventory.Slots);
-                if (emptySlot == null) return;
-                //EMPTY IS NO LONGER EMPTY
+                if (emptySlot == null || inventory.IsItemInEquipmentSlots(JUInventory.GetGlobalItemSwitchID(item, inventory.TargetInventory))) return;
+                // EMPTY IS NO LONGER EMPTY
                 emptySlot.ItemIDToDraw = JUInventory.GetGlobalItemSwitchID(item, inventory.TargetInventory);
                 emptySlot.RefreshSlot();
                 emptySlot.IsEmpty = false;
             }
 
         }
-        public static List<Item> GetNonDrawedItems(Item[] items, List<InventorySlotUI> slots, bool filterLeftHandItems)
+        public static List<JUItem> GetNonDrawedItems(JUItem[] items, List<InventorySlotUI> slots, bool filterLeftHandItems)
         {
-            List<Item> NonDrawed = items.ToList();
+            List<JUItem> NonDrawed = items.ToList();
 
-            foreach (Item item in items)
+            foreach (JUItem item in items)
             {
-                if (item is HoldableItem && filterLeftHandItems)
+                if (item is JUHoldableItem && filterLeftHandItems)
                 {
-                    if ((item as HoldableItem).IsLeftHandItem)
+                    if ((item as JUHoldableItem).IsLeftHandItem)
                     {
                         NonDrawed.Remove(item);
                     }
@@ -288,7 +329,7 @@ namespace JUTPS.InventorySystem.UI
 
             return NonDrawed;
         }
-        public static bool IsItemDrawingInSomeSlots(Item item, List<InventorySlotUI> slots, bool filterLeftHandItems)
+        public static bool IsItemDrawingInSomeSlots(JUItem item, List<InventorySlotUI> slots, bool filterLeftHandItems)
         {
             bool isdrawing = false;
 
@@ -296,9 +337,9 @@ namespace JUTPS.InventorySystem.UI
             {
                 if (filterLeftHandItems)
                 {
-                    if (item is HoldableItem)
+                    if (item is JUHoldableItem)
                     {
-                        if ((item as HoldableItem).IsLeftHandItem == true)
+                        if ((item as JUHoldableItem).IsLeftHandItem == true)
                         {
                             return false;
                         }
@@ -352,6 +393,7 @@ namespace JUTPS.InventorySystem.UI
                 slot.RefreshSlot();
             }
         }
+
         /*
         public void FilterSlots(ref List<InventorySlotUI> slotList, SlotGenerationMode ShowOnly = SlotGenerationMode.RightHandItemsAndNonHoldableItems)
         {
@@ -439,9 +481,9 @@ namespace JUTPS.InventorySystem.UI
             // >>> Remove Holdable Left Hand Items Only
             foreach (InventorySlotUI slot in slotList.ToList())
             {
-                if (slot.CurrentSlotItem() is HoldableItem)
+                if (slot.CurrentSlotItem() is JUHoldableItem)
                 {
-                    if ((slot.CurrentSlotItem() as HoldableItem).IsLeftHandItem)
+                    if ((slot.CurrentSlotItem() as JUHoldableItem).IsLeftHandItem)
                     {
                         slot.ItemIDToDraw = -2;
                         slot.RefreshSlot();

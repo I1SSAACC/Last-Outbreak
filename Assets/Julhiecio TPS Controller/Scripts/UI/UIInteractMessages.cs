@@ -1,5 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using JUTPS.ActionScripts;
+using JUTPS.InteractionSystem;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -14,45 +16,88 @@ namespace JUTPS.UI
         [SerializeField] private bool ShowItemNameOnText;
         [SerializeField] private Text WarningText;
         [SerializeField] private string PickUpLabelText = "[HOLD] TO PICK UP ";
-        [Header("Vehicle Enter Message")]
-        [SerializeField] private string VehicleEnterLabelText = "TO DRIVE";
-        [SerializeField] private Vector3 VehicleOffset;
+        [Header("Interaction Message")]
+        [SerializeField] private string InteractLabelText = "TO INTERACT";
+        [Header("Cover Trigger Message")]
+        [SerializeField] private string CoverLabelText = "TO COVER";
+        CoverSystem.JUCoverController PlayerCover;
 
-
+        private void Start()
+        {
+            JUGameManager.PlayerController = JUGameManager.PlayerController;
+            if (JUGameManager.PlayerController.TryGetComponent(out CoverSystem.JUCoverController cover))
+            {
+                PlayerCover = cover;
+            }
+        }
         void Update()
         {
-            if (JUGameManager.InstancedPlayer == null) { PickUpMessageObject.SetActive(false); return; }
+            if (JUGameManager.PlayerController == null) { PickUpMessageObject.SetActive(false); return; }
 
-            if (JUGameManager.InstancedPlayer.Inventory == null)
+            if (PlayerCover != null)
+            {
+                if (PlayerCover.CurrentCoverTrigger != null && PlayerCover.IsCovering == false && PlayerCover.AutoMode == false)
+                {
+                    PickUpMessageObject.SetActive(true);
+                    UIElementToWorldPosition.SetUIWorldPosition(PickUpMessageObject, PlayerCover.CurrentCoverTrigger.GetCoverWallClosestPoint(PlayerCover.transform.position) + PlayerCover.transform.up * PlayerCover.CurrentCoverTrigger.transform.localScale.y / 2, Offset);
+                    if (WarningText)
+                    {
+                        WarningText.text = CoverLabelText;
+                    }
+                    return;
+                }
+                else
+                {
+                    PickUpMessageObject.SetActive(false);
+                }
+            }
+
+
+            if (JUGameManager.PlayerController.Inventory == null)
             {
                 PickUpMessageObject.SetActive(false);
                 gameObject.SetActive(false);
                 return;
             }
 
-            // >> Vehicle Message
-            if(JUGameManager.InstancedPlayer.VehicleInArea != null && JUGameManager.InstancedPlayer.IsDriving == false)
+            // >> Interaction Message
+            if (JUGameManager.PlayerController.TryGetComponent<JUInteractionSystem>(out var interactionSystem))
             {
-                PickUpMessageObject.SetActive(true);
-                UIElementToWorldPosition.SetUIWorldPosition(PickUpMessageObject, JUGameManager.InstancedPlayer.VehicleInArea.transform.position, VehicleOffset);
-                if (WarningText)
+                var canInteract = interactionSystem.CanInteract(interactionSystem.NearestInteractable);
+                if (interactionSystem.BlockInteractions)
+                    canInteract = false;
+
+                if (canInteract)
                 {
-                    WarningText.text = VehicleEnterLabelText;
+                    PickUpMessageObject.SetActive(true);
+                    UIElementToWorldPosition.SetUIWorldPosition(PickUpMessageObject, interactionSystem.NearestInteractable.SelfCenter, Offset);
+                    if (WarningText)
+                    {
+                        if (interactionSystem.NearestInteractable is JUTPS.InteractionSystem.Interactables.JUGeneralInteractable)
+                        {
+                            WarningText.text = (interactionSystem.NearestInteractable as InteractionSystem.Interactables.JUGeneralInteractable).InteractMessage;
+                        }
+                        else
+                        {
+                            WarningText.text = InteractLabelText;
+                        }
+                    }
+
+                    return;
                 }
-                return;
             }
 
             // >> Item Message
-            PickUpMessageObject.SetActive(JUGameManager.InstancedPlayer.Inventory.ItemToPickUp != null);
+            PickUpMessageObject.SetActive(JUGameManager.PlayerController.Inventory.ItemToPickUp != null);
 
             if (PickUpMessageObject.activeInHierarchy && SetMessagePositionToItemPosition)
             {
-                UIElementToWorldPosition.SetUIWorldPosition(PickUpMessageObject, JUGameManager.InstancedPlayer.Inventory.ItemToPickUp.transform.position, Offset);
+                UIElementToWorldPosition.SetUIWorldPosition(PickUpMessageObject, JUGameManager.PlayerController.Inventory.ItemToPickUp.transform.position, Offset);
             }
 
-            if(ShowItemNameOnText && WarningText && JUGameManager.InstancedPlayer.Inventory.ItemToPickUp != null)
+            if (ShowItemNameOnText && WarningText && JUGameManager.PlayerController.Inventory.ItemToPickUp != null)
             {
-                WarningText.text = PickUpLabelText + JUGameManager.InstancedPlayer.Inventory.ItemToPickUp.ItemName;
+                WarningText.text = PickUpLabelText + JUGameManager.PlayerController.Inventory.ItemToPickUp.ItemName;
             }
         }
     }

@@ -1,167 +1,237 @@
-﻿using System.Collections;
+﻿using JUTPS.JUInputSystem;
 using System.Collections.Generic;
-using UnityEngine;
 using UnityEditor;
-
-using JUTPS.Utilities;
+using UnityEngine;
 
 namespace JUTPS.CustomEditors
 {
     [CustomEditor(typeof(JUCharacterController))]
     public class TPSControllerEditor : Editor
     {
-        public bool MovementSettings, GroundCheckSettings, WallCheckSettings, StepCorrectionSettings, FireModeSettingsTab, EventsSettings, AnimatorSettings, States, AdditionalSettings;
-        public bool AutoFindWeapons;
+        private bool _isEquipItemSettingsOpen;
+        private bool _isLocomotionSettingsOpen;
+        private bool _isGroundCheckSettingsOpen;
+        private bool _isWallCheckSettingsOpen;
+        private bool _isStepCorrectionSettingsOpen;
+        private bool _isFireModeSettingsTabOpen;
+        private bool _isEventsSettingsOpen;
+        private bool _isAnimatorSettingsOpen;
+        private bool _isStatesOpen;
+        private bool _isAdditionalSettingsOpen;
+        private bool _isCharacterDebugOpen;
+
+        public List<GameObject> _prefabListToAdd;
+
+        public JUCharacterController JUCharacter { get; private set; }
+
+        public TPSControllerEditor()
+        {
+            _prefabListToAdd = new List<GameObject>();
+        }
+
         private void OnEnable()
         {
-            JUCharacterController pl = (JUCharacterController)target;
+            _isLocomotionSettingsOpen = EditorPrefs.GetBool($"{nameof(TPSControllerEditor)}.{nameof(_isLocomotionSettingsOpen)}");
+            _isEquipItemSettingsOpen = EditorPrefs.GetBool($"{nameof(TPSControllerEditor)}.{nameof(_isEquipItemSettingsOpen)}");
+            _isGroundCheckSettingsOpen = EditorPrefs.GetBool($"{nameof(TPSControllerEditor)}.{nameof(_isGroundCheckSettingsOpen)}");
+            _isWallCheckSettingsOpen = EditorPrefs.GetBool($"{nameof(TPSControllerEditor)}.{nameof(_isWallCheckSettingsOpen)}");
+            _isStepCorrectionSettingsOpen = EditorPrefs.GetBool($"{nameof(TPSControllerEditor)}.{nameof(_isStepCorrectionSettingsOpen)}");
+            _isFireModeSettingsTabOpen = EditorPrefs.GetBool($"{nameof(TPSControllerEditor)}.{nameof(_isFireModeSettingsTabOpen)}");
+            _isEventsSettingsOpen = EditorPrefs.GetBool($"{nameof(TPSControllerEditor)}.{nameof(_isEventsSettingsOpen)}");
+            _isAnimatorSettingsOpen = EditorPrefs.GetBool($"{nameof(TPSControllerEditor)}.{nameof(_isAnimatorSettingsOpen)}");
+            _isStatesOpen = EditorPrefs.GetBool($"{nameof(TPSControllerEditor)}.{nameof(_isStatesOpen)}");
+            _isAdditionalSettingsOpen = EditorPrefs.GetBool($"{nameof(TPSControllerEditor)}.{nameof(_isAdditionalSettingsOpen)}");
+            _isCharacterDebugOpen = EditorPrefs.GetBool($"{nameof(TPSControllerEditor)}.{nameof(_isCharacterDebugOpen)}");
 
-            PLlayerMasksStartup(pl);
+            JUCharacter = (JUCharacterController)target;
+            CharacterLayerMasksStartup();
         }
+
+        private void OnDestroy()
+        {
+            EditorPrefs.SetBool($"{nameof(TPSControllerEditor)}.{nameof(_isLocomotionSettingsOpen)}", _isLocomotionSettingsOpen);
+            EditorPrefs.SetBool($"{nameof(TPSControllerEditor)}.{nameof(_isEquipItemSettingsOpen)}", _isEquipItemSettingsOpen);
+            EditorPrefs.SetBool($"{nameof(TPSControllerEditor)}.{nameof(_isGroundCheckSettingsOpen)}", _isGroundCheckSettingsOpen);
+            EditorPrefs.SetBool($"{nameof(TPSControllerEditor)}.{nameof(_isWallCheckSettingsOpen)}", _isWallCheckSettingsOpen);
+            EditorPrefs.SetBool($"{nameof(TPSControllerEditor)}.{nameof(_isStepCorrectionSettingsOpen)}", _isStepCorrectionSettingsOpen);
+            EditorPrefs.SetBool($"{nameof(TPSControllerEditor)}.{nameof(_isFireModeSettingsTabOpen)}", _isFireModeSettingsTabOpen);
+            EditorPrefs.SetBool($"{nameof(TPSControllerEditor)}.{nameof(_isEventsSettingsOpen)}", _isEventsSettingsOpen);
+            EditorPrefs.SetBool($"{nameof(TPSControllerEditor)}.{nameof(_isAnimatorSettingsOpen)}", _isAnimatorSettingsOpen);
+            EditorPrefs.SetBool($"{nameof(TPSControllerEditor)}.{nameof(_isStatesOpen)}", _isStatesOpen);
+            EditorPrefs.SetBool($"{nameof(TPSControllerEditor)}.{nameof(_isAdditionalSettingsOpen)}", _isAdditionalSettingsOpen);
+            EditorPrefs.SetBool($"{nameof(TPSControllerEditor)}.{nameof(_isCharacterDebugOpen)}", _isCharacterDebugOpen);
+        }
+
         public override void OnInspectorGUI()
         {
             serializedObject.Update();
-            JUCharacterController pl = (JUCharacterController)target;
+
+            var toolbarStyle = JUTPSEditor.CustomEditorStyles.Toolbar();
 
             JUTPSEditor.CustomEditorUtilities.JUTPSTitle("Character Controller");
 
-            MovementSettings = GUILayout.Toggle(MovementSettings, "Locomotion", JUTPSEditor.CustomEditorStyles.Toolbar());
-            MovementSettingsVariables(pl);
+            _isLocomotionSettingsOpen = GUILayout.Toggle(_isLocomotionSettingsOpen, "Locomotion", toolbarStyle);
+            MovementSettingsVariables();
 
-            GroundCheckSettings = GUILayout.Toggle(GroundCheckSettings, "Ground Check", JUTPSEditor.CustomEditorStyles.Toolbar());
-            GroundCheckSettingsVariables(pl);
+            _isEquipItemSettingsOpen = GUILayout.Toggle(_isEquipItemSettingsOpen, "Item Equiping", toolbarStyle);
+            ItemEquipingSettingsVariables();
 
-            WallCheckSettings = GUILayout.Toggle(WallCheckSettings, "Wall Check", JUTPSEditor.CustomEditorStyles.Toolbar());
-            WallCheckSettingsVariables(pl);
+            _isGroundCheckSettingsOpen = GUILayout.Toggle(_isGroundCheckSettingsOpen, "Ground Check", toolbarStyle);
+            GroundCheckSettingsVariables();
 
-            StepCorrectionSettings = GUILayout.Toggle(StepCorrectionSettings, "Auto Step Up", JUTPSEditor.CustomEditorStyles.Toolbar());
-            StepCorrectionSettingsVariables(pl);
+            _isWallCheckSettingsOpen = GUILayout.Toggle(_isWallCheckSettingsOpen, "Wall Check", toolbarStyle);
+            WallCheckSettingsVariables();
 
-            FireModeSettingsTab = GUILayout.Toggle(FireModeSettingsTab, "Fire Mode", JUTPSEditor.CustomEditorStyles.Toolbar());
-            FireModeSettings(pl);
+            _isStepCorrectionSettingsOpen = GUILayout.Toggle(_isStepCorrectionSettingsOpen, "Auto Step Up", toolbarStyle);
+            StepCorrectionSettingsVariables();
 
-            AnimatorSettings = GUILayout.Toggle(AnimatorSettings, "Animator", JUTPSEditor.CustomEditorStyles.Toolbar());
+            _isFireModeSettingsTabOpen = GUILayout.Toggle(_isFireModeSettingsTabOpen, "Fire Mode", toolbarStyle);
+            FireModeSettings();
+
+            _isAnimatorSettingsOpen = GUILayout.Toggle(_isAnimatorSettingsOpen, "Animator", toolbarStyle);
             AnimatorSettingsVariables();
 
-            EventsSettings = GUILayout.Toggle(EventsSettings, "Death Events", JUTPSEditor.CustomEditorStyles.Toolbar());
-            EventsSettingsVariables(pl);
+            _isEventsSettingsOpen = GUILayout.Toggle(_isEventsSettingsOpen, "Default Events", toolbarStyle);
+            EventsSettingsVariables();
 
-            AdditionalSettings = GUILayout.Toggle(AdditionalSettings, "Controller Options", JUTPSEditor.CustomEditorStyles.Toolbar());
-            AdditionalSettingsDrawer(pl);
+            _isAdditionalSettingsOpen = GUILayout.Toggle(_isAdditionalSettingsOpen, "Controller Options", toolbarStyle);
+            AdditionalSettingsDrawer();
 
-            States = GUILayout.Toggle(States, "Controller States", JUTPSEditor.CustomEditorStyles.Toolbar());
-            StatesViewVariables(pl);
+            _isStatesOpen = GUILayout.Toggle(_isStatesOpen, "Controller States", toolbarStyle);
+            StatesViewVariables();
+
+            _isCharacterDebugOpen = GUILayout.Toggle(_isCharacterDebugOpen, "Debug Options", toolbarStyle);
+            CharacterDebugVariables();
 
             serializedObject.ApplyModifiedProperties();
-            //DrawDefaultInspector();
         }
-        public void ExempleSettingsVariables(JUCharacterController pl)
+
+        private void MovementSettingsVariables()
         {
-            if (MovementSettings)
+            if (!_isLocomotionSettingsOpen)
+                return;
+
+
+            serializedObject.FindProperty(nameof(JUCharacter.UseDefaultControllerInput)).boolValue = EditorGUILayout.Toggle("Use Default Inputs", JUCharacter.UseDefaultControllerInput);
+
+            if (JUCharacter.UseDefaultControllerInput)
+                serializedObject.FindProperty(nameof(JUCharacter.Inputs)).objectReferenceValue = EditorGUILayout.ObjectField("Default Input Asset", JUCharacter.Inputs, typeof(JUPlayerCharacterInputAsset), false);
+
+            //Move On Forward When Isnt Aiming
+            EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(JUCharacter.LocomotionMode)));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(JUCharacter.SetRigidbodyVelocity)));
+
+            serializedObject.FindProperty(nameof(JUCharacter.Speed)).floatValue = EditorGUILayout.Slider("  General Speed", JUCharacter.Speed, 0, 30);
+
+            serializedObject.FindProperty(nameof(JUCharacter.WalkSpeed)).floatValue = EditorGUILayout.Slider("    Walk Speed", JUCharacter.WalkSpeed, 0, 5);
+            serializedObject.FindProperty(nameof(JUCharacter.CrouchSpeed)).floatValue = EditorGUILayout.Slider("    Crouch Speed", JUCharacter.CrouchSpeed, 0, 5);
+            serializedObject.FindProperty(nameof(JUCharacter.RunSpeed)).floatValue = EditorGUILayout.Slider("    Run Speed", JUCharacter.RunSpeed, 0, 5);
+            serializedObject.FindProperty(nameof(JUCharacter.SprintingSpeedMax)).floatValue = EditorGUILayout.Slider("    Sprint Max Speed", JUCharacter.SprintingSpeedMax, 0, 5);
+
+            serializedObject.FindProperty(nameof(JUCharacter.RotationSpeed)).floatValue = EditorGUILayout.Slider("  Rotation Speed", JUCharacter.RotationSpeed, 0, 30);
+            serializedObject.FindProperty(nameof(JUCharacter.JumpForce)).floatValue = EditorGUILayout.Slider("  Jump Force", JUCharacter.JumpForce, 1, 10);
+            serializedObject.FindProperty(nameof(JUCharacter.AirInfluenceControll)).floatValue = EditorGUILayout.Slider("  In Air Control Force", JUCharacter.AirInfluenceControll, 0, 100);
+            serializedObject.FindProperty(nameof(JUCharacter.StoppingSpeed)).floatValue = EditorGUILayout.Slider("  Stopping Speed", JUCharacter.StoppingSpeed, 0.1f, 5);
+            serializedObject.FindProperty(nameof(JUCharacter.MaxWalkableAngle)).floatValue = EditorGUILayout.Slider("  Max Walkable Angle", JUCharacter.MaxWalkableAngle, 0, 89);
+
+            serializedObject.FindProperty(nameof(JUCharacter.MovementAffectsWeaponAccuracy)).boolValue = EditorGUILayout.ToggleLeft("  Movement Affects Weapon Accuracy", JUCharacter.MovementAffectsWeaponAccuracy, JUTPSEditor.CustomEditorStyles.MiniLeftButtonStyle());
+            if (JUCharacter.MovementAffectsWeaponAccuracy)
             {
-                CharacterSettingsGizmosViewerr(pl);
+                serializedObject.FindProperty(nameof(JUCharacter.OnMovePrecision)).floatValue = EditorGUILayout.Slider("  On Move Precision", JUCharacter.OnMovePrecision, 0, 16);
             }
+
+
+            serializedObject.FindProperty(nameof(JUCharacter.GroundAngleDesaceleration)).boolValue = EditorGUILayout.ToggleLeft("  High Inclines Slow Down", JUCharacter.GroundAngleDesaceleration, JUTPSEditor.CustomEditorStyles.MiniLeftButtonStyle());
+            if (JUCharacter.GroundAngleDesaceleration)
+            {
+                serializedObject.FindProperty(nameof(JUCharacter.GroundAngleDesacelerationMultiplier)).floatValue = EditorGUILayout.Slider("  Intensity", JUCharacter.GroundAngleDesacelerationMultiplier, 0, 2);
+            }
+
+            serializedObject.FindProperty(nameof(JUCharacter.CurvedMovement)).boolValue = EditorGUILayout.ToggleLeft("  Curved Movement", JUCharacter.CurvedMovement, JUTPSEditor.CustomEditorStyles.MiniLeftButtonStyle());
+            serializedObject.FindProperty(nameof(JUCharacter.LerpRotation)).boolValue = EditorGUILayout.ToggleLeft("  Lerp Rotation", JUCharacter.LerpRotation, JUTPSEditor.CustomEditorStyles.MiniLeftButtonStyle());
+
+            serializedObject.FindProperty(nameof(JUCharacter.BodyInclination)).boolValue = EditorGUILayout.ToggleLeft("  Body Lean", JUCharacter.BodyInclination, JUTPSEditor.CustomEditorStyles.MiniLeftButtonStyle());
+
+            serializedObject.FindProperty(nameof(JUCharacter.RootMotion)).boolValue = EditorGUILayout.ToggleLeft("  Root Motion", JUCharacter.RootMotion, JUTPSEditor.CustomEditorStyles.MiniLeftButtonStyle());
+
+            if (JUCharacter.RootMotion)
+            {
+                serializedObject.FindProperty(nameof(JUCharacter.RootMotionSpeed)).floatValue = EditorGUILayout.Slider("  Root Motion Speed", JUCharacter.RootMotionSpeed, 0, 10);
+                serializedObject.FindProperty(nameof(JUCharacter.RootMotionRotation)).boolValue = EditorGUILayout.Toggle("  Root Motion Rotation", JUCharacter.RootMotionRotation);
+            }
+
+            serializedObject.FindProperty(nameof(JUCharacter.AutoRun)).boolValue = EditorGUILayout.ToggleLeft("  Auto Run", JUCharacter.AutoRun, JUTPSEditor.CustomEditorStyles.MiniLeftButtonStyle());
+            if (JUCharacter.AutoRun)
+            {
+                serializedObject.FindProperty(nameof(JUCharacter.WalkOnRunButton)).boolValue = EditorGUILayout.Toggle("  Walk On Run Button", JUCharacter.WalkOnRunButton);
+                serializedObject.FindProperty(nameof(JUCharacter.SprintOnRunButton)).boolValue = EditorGUILayout.Toggle("  Sprint On Run Button", JUCharacter.SprintOnRunButton);
+                serializedObject.FindProperty(nameof(JUCharacter.UnlimitedSprintDuration)).boolValue = EditorGUILayout.Toggle("  Unlimited Sprint Duration", JUCharacter.UnlimitedSprintDuration);
+
+            }
+            serializedObject.FindProperty(nameof(JUCharacter.SprintingSkill)).boolValue = EditorGUILayout.ToggleLeft("  Enable Sprint Skill", JUCharacter.SprintingSkill, JUTPSEditor.CustomEditorStyles.MiniLeftButtonStyle());
+            if (JUCharacter.SprintingSkill)
+            {
+                serializedObject.FindProperty(nameof(JUCharacter.SprintingAcceleration)).floatValue = EditorGUILayout.Slider("  Sprinting Acceleration", JUCharacter.SprintingAcceleration, 0, 10);
+                serializedObject.FindProperty(nameof(JUCharacter.SprintingDeceleration)).floatValue = EditorGUILayout.Slider("  Sprinting Deceleration", JUCharacter.SprintingDeceleration, 0, 10);
+            }
+            serializedObject.FindProperty(nameof(JUCharacter.DecreaseSpeedOnJump)).boolValue = EditorGUILayout.ToggleLeft("  Decrease Speed On Jump", JUCharacter.DecreaseSpeedOnJump, JUTPSEditor.CustomEditorStyles.MiniLeftButtonStyle());
         }
-        public void MovementSettingsVariables(JUCharacterController pl)
+
+        private void ItemEquipingSettingsVariables()
         {
-            if (MovementSettings)
-            {
-                //Move On Forward When Isnt Aiming
-                EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(pl.LocomotionMode)));
-                EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(pl.SetRigidbodyVelocity)));
+            if (!_isEquipItemSettingsOpen)
+                return;
 
-                serializedObject.FindProperty("Speed").floatValue = EditorGUILayout.Slider("  Movement Speed", pl.Speed, 0, 30);
-                serializedObject.FindProperty("RotationSpeed").floatValue = EditorGUILayout.Slider("  Rotation Speed", pl.RotationSpeed, 0, 30);
-                serializedObject.FindProperty("JumpForce").floatValue = EditorGUILayout.Slider("  Jump Force", pl.JumpForce, 1, 10);
-                serializedObject.FindProperty("AirInfluenceControll").floatValue = EditorGUILayout.Slider("  In Air Control Force", pl.AirInfluenceControll, 0, 100);
-                serializedObject.FindProperty("StoppingSpeed").floatValue = EditorGUILayout.Slider("  Stopping Speed", pl.StoppingSpeed, 0.1f, 5);
-                serializedObject.FindProperty("MaxWalkableAngle").floatValue = EditorGUILayout.Slider("  Max Walkable Angle", pl.MaxWalkableAngle, 0, 89);
-
-                serializedObject.FindProperty("MovementAffectsWeaponAccuracy").boolValue = EditorGUILayout.ToggleLeft("  Movement Affects Weapon Accuracy", pl.MovementAffectsWeaponAccuracy, JUTPSEditor.CustomEditorStyles.MiniLeftButtonStyle());
-                if (pl.MovementAffectsWeaponAccuracy)
-                {
-                    serializedObject.FindProperty("OnMovePrecision").floatValue = EditorGUILayout.Slider("  On Move Precision", pl.OnMovePrecision, 0, 16);
-                }
-
-
-                serializedObject.FindProperty("GroundAngleDesaceleration").boolValue = EditorGUILayout.ToggleLeft("  High Inclines Slow Down", pl.GroundAngleDesaceleration, JUTPSEditor.CustomEditorStyles.MiniLeftButtonStyle());
-                if (pl.GroundAngleDesaceleration)
-                {
-                    serializedObject.FindProperty("GroundAngleDesacelerationMultiplier").floatValue = EditorGUILayout.Slider("  Intensity", pl.GroundAngleDesacelerationMultiplier, 0, 2);
-                }
-
-                serializedObject.FindProperty("CurvedMovement").boolValue = EditorGUILayout.ToggleLeft("  Curved Movement", pl.CurvedMovement, JUTPSEditor.CustomEditorStyles.MiniLeftButtonStyle());
-                serializedObject.FindProperty("LerpRotation").boolValue = EditorGUILayout.ToggleLeft("  Lerp Rotation", pl.LerpRotation, JUTPSEditor.CustomEditorStyles.MiniLeftButtonStyle());
-
-                serializedObject.FindProperty("BodyInclination").boolValue = EditorGUILayout.ToggleLeft("  Body Lean", pl.BodyInclination, JUTPSEditor.CustomEditorStyles.MiniLeftButtonStyle());
-
-                serializedObject.FindProperty("RootMotion").boolValue = EditorGUILayout.ToggleLeft("  Root Motion", pl.RootMotion, JUTPSEditor.CustomEditorStyles.MiniLeftButtonStyle());
-                if (pl.RootMotion)
-                {
-                    serializedObject.FindProperty("RootMotionSpeed").floatValue = EditorGUILayout.Slider("  Root Motion Speed", pl.RootMotionSpeed, 0, 10);
-                    serializedObject.FindProperty("RootMotionRotation").boolValue = EditorGUILayout.Toggle("  Root Motion Rotation", pl.RootMotionRotation);
-                }
-                serializedObject.FindProperty("AutoRun").boolValue = EditorGUILayout.ToggleLeft("  Auto Run", pl.AutoRun, JUTPSEditor.CustomEditorStyles.MiniLeftButtonStyle());
-                if (pl.AutoRun)
-                {
-                    serializedObject.FindProperty("WalkOnRunButton").boolValue = EditorGUILayout.Toggle("  Walk On Run Button", pl.WalkOnRunButton);
-                    serializedObject.FindProperty("SprintOnRunButton").boolValue = EditorGUILayout.Toggle("  Sprint On Run Button", pl.SprintOnRunButton);
-                    serializedObject.FindProperty("UnlimitedSprintDuration").boolValue = EditorGUILayout.Toggle("  Unlimited Sprint Duration", pl.UnlimitedSprintDuration);
-
-                }
-                serializedObject.FindProperty("SprintingSkill").boolValue = EditorGUILayout.ToggleLeft("  Enable Sprint Skill", pl.SprintingSkill, JUTPSEditor.CustomEditorStyles.MiniLeftButtonStyle());
-                serializedObject.FindProperty("DecreaseSpeedOnJump").boolValue = EditorGUILayout.ToggleLeft("  Decrease Speed On Jump", pl.DecreaseSpeedOnJump, JUTPSEditor.CustomEditorStyles.MiniLeftButtonStyle());
-
-                CharacterSettingsGizmosViewerr(pl);
-            }
+            serializedObject.FindProperty(nameof(JUCharacter.ItemToEquipOnStart)).intValue = EditorGUILayout.IntField("  Item To Equip On Start", JUCharacter.ItemToEquipOnStart);
         }
-        public void GroundCheckSettingsVariables(JUCharacterController pl)
+
+        private void GroundCheckSettingsVariables()
         {
-            if (GroundCheckSettings == true)
-            {
-                LayerMask tempMask = EditorGUILayout.MaskField("  Ground Layer", UnityEditorInternal.InternalEditorUtility.LayerMaskToConcatenatedLayersMask(pl.WhatIsGround), UnityEditorInternal.InternalEditorUtility.layers);
-                serializedObject.FindProperty("WhatIsGround").intValue = UnityEditorInternal.InternalEditorUtility.ConcatenatedLayersMaskToLayerMask(tempMask);
+            if (!_isGroundCheckSettingsOpen)
+                return;
 
-                serializedObject.FindProperty("GroundCheckRadius").floatValue = EditorGUILayout.Slider("  Radius", pl.GroundCheckRadius, 0.01f, 0.2f);
-                serializedObject.FindProperty("GroundCheckSize").floatValue = EditorGUILayout.Slider("  Height", pl.GroundCheckSize, 0.05f, 0.5f);
-                serializedObject.FindProperty("GroundCheckHeighOfsset").floatValue = EditorGUILayout.Slider("  Up Ofsset", pl.GroundCheckHeighOfsset, -1f, 1f);
-                CharacterSettingsGizmosViewerr(pl);
-            }
+            LayerMask tempMask = EditorGUILayout.MaskField("  Ground Layer", UnityEditorInternal.InternalEditorUtility.LayerMaskToConcatenatedLayersMask(JUCharacter.WhatIsGround), UnityEditorInternal.InternalEditorUtility.layers);
+            serializedObject.FindProperty(nameof(JUCharacter.WhatIsGround)).intValue = UnityEditorInternal.InternalEditorUtility.ConcatenatedLayersMaskToLayerMask(tempMask);
+
+            serializedObject.FindProperty(nameof(JUCharacter.GroundCheckRadius)).floatValue = EditorGUILayout.Slider("  Radius", JUCharacter.GroundCheckRadius, 0.01f, 0.2f);
+            serializedObject.FindProperty(nameof(JUCharacter.GroundCheckSize)).floatValue = EditorGUILayout.Slider("  Height", JUCharacter.GroundCheckSize, 0.05f, 0.5f);
+            serializedObject.FindProperty(nameof(JUCharacter.GroundCheckHeighOfsset)).floatValue = EditorGUILayout.Slider("  Up Ofsset", JUCharacter.GroundCheckHeighOfsset, -1f, 1f);
         }
-        public void WallCheckSettingsVariables(JUCharacterController pl)
+
+        private void WallCheckSettingsVariables()
         {
-            if (WallCheckSettings == true)
-            {
-                LayerMask tempMask = EditorGUILayout.MaskField("  Wall Layers", UnityEditorInternal.InternalEditorUtility.LayerMaskToConcatenatedLayersMask(pl.WhatIsWall), UnityEditorInternal.InternalEditorUtility.layers);
-                serializedObject.FindProperty("WhatIsWall").intValue = UnityEditorInternal.InternalEditorUtility.ConcatenatedLayersMaskToLayerMask(tempMask);
+            if (!_isWallCheckSettingsOpen == true)
+                return;
 
-                serializedObject.FindProperty("WallRayHeight").floatValue = EditorGUILayout.Slider("  Wall Ray Height", pl.WallRayHeight, -5, 5);
-                serializedObject.FindProperty("WallRayDistance").floatValue = EditorGUILayout.Slider("  Wall Ray Distance", pl.WallRayDistance, 0.1f, 5f);
-                CharacterSettingsGizmosViewerr(pl);
-            }
+            LayerMask tempMask = EditorGUILayout.MaskField("  Wall Layers", UnityEditorInternal.InternalEditorUtility.LayerMaskToConcatenatedLayersMask(JUCharacter.WhatIsWall), UnityEditorInternal.InternalEditorUtility.layers);
+            serializedObject.FindProperty(nameof(JUCharacter.WhatIsWall)).intValue = UnityEditorInternal.InternalEditorUtility.ConcatenatedLayersMaskToLayerMask(tempMask);
+
+            serializedObject.FindProperty(nameof(JUCharacter.WallRayHeight)).floatValue = EditorGUILayout.Slider("  Wall Ray Height", JUCharacter.WallRayHeight, -5, 5);
+            serializedObject.FindProperty(nameof(JUCharacter.WallRayDistance)).floatValue = EditorGUILayout.Slider("  Wall Ray Distance", JUCharacter.WallRayDistance, 0.1f, 5f);
         }
 
-        public void StepCorrectionSettingsVariables(JUCharacterController pl)
+        private void StepCorrectionSettingsVariables()
         {
-            if (StepCorrectionSettings)
-            {
-                serializedObject.FindProperty("EnableStepCorrection").boolValue = EditorGUILayout.Toggle("  Step Correction", pl.EnableStepCorrection);
-                serializedObject.FindProperty("UpStepSpeed").floatValue = EditorGUILayout.Slider("  Up Step Speed", pl.UpStepSpeed, 2, 15);
+            if (!_isStepCorrectionSettingsOpen)
+                return;
 
-                LayerMask tempMask = EditorGUILayout.MaskField("  Step Correction Layers", UnityEditorInternal.InternalEditorUtility.LayerMaskToConcatenatedLayersMask(pl.StepCorrectionMask), UnityEditorInternal.InternalEditorUtility.layers);
-                serializedObject.FindProperty("StepCorrectionMask").intValue = UnityEditorInternal.InternalEditorUtility.ConcatenatedLayersMaskToLayerMask(tempMask);
+            serializedObject.FindProperty(nameof(JUCharacter.EnableStepCorrection)).boolValue = EditorGUILayout.Toggle("  Step Correction", JUCharacter.EnableStepCorrection);
+            serializedObject.FindProperty(nameof(JUCharacter.UpStepSpeed)).floatValue = EditorGUILayout.Slider("  Up Step Speed", JUCharacter.UpStepSpeed, 2, 15);
 
-                serializedObject.FindProperty("FootstepHeight").floatValue = EditorGUILayout.Slider("  Step Raycast Distance", pl.FootstepHeight, 0.1f, 1f);
-                serializedObject.FindProperty("ForwardStepOffset").floatValue = EditorGUILayout.Slider("  Forward Offset", pl.ForwardStepOffset, 0f, 1f);
-                serializedObject.FindProperty("StepHeight").floatValue = EditorGUILayout.Slider("  Step Height", pl.StepHeight, 0.01f, pl.FootstepHeight);
+            LayerMask tempMask = EditorGUILayout.MaskField("  Step Correction Layers", UnityEditorInternal.InternalEditorUtility.LayerMaskToConcatenatedLayersMask(JUCharacter.StepCorrectionMask), UnityEditorInternal.InternalEditorUtility.layers);
+            serializedObject.FindProperty(nameof(JUCharacter.StepCorrectionMask)).intValue = UnityEditorInternal.InternalEditorUtility.ConcatenatedLayersMaskToLayerMask(tempMask);
 
-                CharacterSettingsGizmosViewerr(pl);
-            }
+            serializedObject.FindProperty(nameof(JUCharacter.FootstepHeight)).floatValue = EditorGUILayout.Slider("  Step Raycast Distance", JUCharacter.FootstepHeight, 0.1f, 1f);
+            serializedObject.FindProperty(nameof(JUCharacter.ForwardStepOffset)).floatValue = EditorGUILayout.Slider("  Forward Offset", JUCharacter.ForwardStepOffset, 0f, 1f);
+            serializedObject.FindProperty(nameof(JUCharacter.StepHeight)).floatValue = EditorGUILayout.Slider("  Step Height", JUCharacter.StepHeight, 0.01f, JUCharacter.FootstepHeight);
+            GUILayout.Space(10);
+            serializedObject.FindProperty(nameof(JUCharacter.EnableUngroundedStepUp)).boolValue = EditorGUILayout.Toggle("  Enable Ungrounded Step Up", JUCharacter.EnableUngroundedStepUp);
+            serializedObject.FindProperty(nameof(JUCharacter.UngroundedStepUpSpeed)).floatValue = EditorGUILayout.FloatField("  UngroundedStepUp Speed", JUCharacter.UngroundedStepUpSpeed);
+            serializedObject.FindProperty(nameof(JUCharacter.UngroundedStepUpRayDistance)).floatValue = EditorGUILayout.FloatField("  UngroundedStepUp Ray Distance", JUCharacter.UngroundedStepUpRayDistance);
+            serializedObject.FindProperty(nameof(JUCharacter.StoppingTimeOnStepPosition)).floatValue = EditorGUILayout.FloatField("  Stopping Time On StepPosition", JUCharacter.StoppingTimeOnStepPosition);
         }
 
-
-        public List<GameObject> PrefabListToAdd = new List<GameObject>();
-        public void DropItensField(JUCharacterController pl)
+        private void DropItensField()
         {
             //Get current events
             Event GUIEvent = Event.current;
@@ -183,22 +253,22 @@ namespace JUTPS.CustomEditors
                         DragAndDrop.AcceptDrag();
                         foreach (GameObject DropedGameObject in DragAndDrop.objectReferences)
                         {
-                            PrefabListToAdd.Add(DropedGameObject);
+                            _prefabListToAdd.Add(DropedGameObject);
                         }
                     }
                     break;
             }
 
             //ADD ITENS
-            if (PrefabListToAdd.Count > 0)
+            if (_prefabListToAdd.Count > 0)
             {
-                foreach (GameObject ItemToAdd in PrefabListToAdd)
+                foreach (GameObject ItemToAdd in _prefabListToAdd)
                 {
                     GUILayout.BeginHorizontal();
                     GUILayout.Label(" + | " + ItemToAdd.name, JUTPSEditor.CustomEditorStyles.NormalStateStyle(), GUILayout.Width(200));
                     if (GUILayout.Button("X", JUTPSEditor.CustomEditorStyles.DangerButtonStyle(), GUILayout.Width(20)))
                     {
-                        PrefabListToAdd.Remove(ItemToAdd);
+                        _prefabListToAdd.Remove(ItemToAdd);
                         Debug.Log("deleted");
                     }
                     GUILayout.EndHorizontal();
@@ -206,122 +276,119 @@ namespace JUTPS.CustomEditors
                 if (GUILayout.Button("Add Itens", EditorStyles.miniButtonMid))
                 {
                     //Null error
-                    if (pl.GetComponent<Animator>().GetBoneTransform(HumanBodyBones.RightHand) == null)
+                    if (JUCharacter.GetComponent<Animator>().GetBoneTransform(HumanBodyBones.RightHand) == null)
                     {
                         Debug.LogError("Items cannot be added because the character's right hand cannot be found.");
                         return;
                     }
                     //Add itens
-                    foreach (GameObject ItemToAdd in PrefabListToAdd)
+                    foreach (GameObject ItemToAdd in _prefabListToAdd)
                     {
                         Vector3 rotation = new Vector3(-100, -180, 280);
-                        Vector3 position = pl.GetComponent<Animator>().GetBoneTransform(HumanBodyBones.RightHand).position;
-                        var item = Instantiate(ItemToAdd, position, Quaternion.identity, pl.GetComponent<Animator>().GetBoneTransform(HumanBodyBones.RightHand));
+                        Vector3 position = JUCharacter.GetComponent<Animator>().GetBoneTransform(HumanBodyBones.RightHand).position;
+                        var item = Instantiate(ItemToAdd, position, Quaternion.identity, JUCharacter.GetComponent<Animator>().GetBoneTransform(HumanBodyBones.RightHand));
                         item.transform.localEulerAngles = rotation;
                     }
-                    PrefabListToAdd.Clear();
+                    _prefabListToAdd.Clear();
                 }
                 GUILayout.Space(20);
             }
-
-
         }
 
-        public void FireModeSettings(JUCharacterController pl)
+        private void FireModeSettings()
         {
-            if (FireModeSettingsTab)
+            if (_isFireModeSettingsTabOpen)
             {
-                //serializedObject.FindProperty("PivotItemRotation").objectReferenceValue = EditorGUILayout.ObjectField("Item Aim Rotation Center", pl.PivotItemRotation, typeof(GameObject), true) as GameObject;
-                //serializedObject.FindProperty("HumanoidSpine").objectReferenceValue = EditorGUILayout.ObjectField("Upper Chest Spine Bone", pl.HumanoidSpine, typeof(GameObject), true) as Transform;
-                EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(pl.PivotItemRotation)));
-                EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(pl.HumanoidSpine)));
+                EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(JUCharacter.PivotItemRotation)));
+                EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(JUCharacter.HumanoidSpine)));
 
-                //if (pl.HumanoidSpine == null)
-                //{
-                //    pl.HumanoidSpine = pl.GetLastSpineBone();
-                //}
-                EditorGUILayout.PropertyField(serializedObject.FindProperty("AimMode"));
-                serializedObject.FindProperty("FireModeMaxTime").floatValue = EditorGUILayout.Slider("FireMode Max Time", pl.FireModeMaxTime, 0, 50);
+                EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(JUCharacter.AimMode)));
+                serializedObject.FindProperty(nameof(JUCharacter.FireModeMaxTime)).floatValue = EditorGUILayout.Slider("FireMode Max Time", JUCharacter.FireModeMaxTime, 0, 50);
+                serializedObject.FindProperty(nameof(JUCharacter.FireModeWalkSpeed)).floatValue = EditorGUILayout.Slider("FireMode Walk Speed", JUCharacter.FireModeWalkSpeed, 0, 5);
+                serializedObject.FindProperty(nameof(JUCharacter.FireModeRunSpeed)).floatValue = EditorGUILayout.Slider("FireMode Run Speed", JUCharacter.FireModeRunSpeed, 0, 5);
+                serializedObject.FindProperty(nameof(JUCharacter.FireModeCrouchSpeed)).floatValue = EditorGUILayout.Slider("FireMode Crouch Speed", JUCharacter.FireModeCrouchSpeed, 0, 5);
             }
         }
-        public void AnimatorSettingsVariables()
+
+        private void AnimatorSettingsVariables()
         {
-            if (AnimatorSettings)
+            if (_isAnimatorSettingsOpen)
             {
-                EditorGUILayout.PropertyField(serializedObject.FindProperty("anim"));
-                EditorGUILayout.PropertyField(serializedObject.FindProperty("AnimatorParameters"));
+                EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(JUCharacter.anim)));
+                EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(JUCharacter.AnimatorParameters)));
             }
         }
-        public void EventsSettingsVariables(JUCharacterController pl)
+
+        private void EventsSettingsVariables()
         {
-            if (EventsSettings)
+            if (_isEventsSettingsOpen)
             {
-                serializedObject.FindProperty("RagdollWhenDie").boolValue = EditorGUILayout.ToggleLeft("Enable Ragdoll When Die", pl.RagdollWhenDie, JUTPSEditor.CustomEditorStyles.MiniLeftButtonStyle());
+                serializedObject.FindProperty(nameof(JUCharacter.RagdollWhenDie)).boolValue = EditorGUILayout.ToggleLeft("Enable Ragdoll When Die", JUCharacter.RagdollWhenDie, JUTPSEditor.CustomEditorStyles.MiniLeftButtonStyle());
+                EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(JUCharacter.Events)));
             }
         }
-        public void StatesViewVariables(JUCharacterController pl)
+
+        private void StatesViewVariables()
         {
-            if (States)
+            if (_isStatesOpen)
             {
-                if (pl.CharacterHealth != null)
+                if (JUCharacter.CharacterHealth != null)
                 {
                     //Style
                     var lifestyle = new GUIStyle(JUTPSEditor.CustomEditorStyles.Toolbar());
                     Color fullifecolor = new Color(0.2f, 1, 0.1f);
                     Color nolifecolor = new Color(1f, 0.5f, 0.5f);
-                    lifestyle.normal.textColor = Color.Lerp(nolifecolor, fullifecolor, pl.CharacterHealth.Health / pl.CharacterHealth.MaxHealth);
+                    lifestyle.normal.textColor = Color.Lerp(nolifecolor, fullifecolor, JUCharacter.CharacterHealth.Health / JUCharacter.CharacterHealth.MaxHealth);
                     lifestyle.alignment = TextAnchor.MiddleCenter;
                     lifestyle.fontSize = 12;
 
                     //Health Display
-                    int health_int = (int)pl.CharacterHealth.Health;
+                    int health_int = (int)JUCharacter.CharacterHealth.Health;
                     EditorGUILayout.LabelField("Health: " + health_int.ToString() + "%", lifestyle, GUILayout.Width(120));
                     //Health Slider
-                    pl.CharacterHealth.Health = GUILayout.HorizontalSlider(pl.CharacterHealth.Health, 0, pl.CharacterHealth.MaxHealth, GUILayout.Width(120), GUILayout.Height(2));
+                    JUCharacter.CharacterHealth.Health = GUILayout.HorizontalSlider(JUCharacter.CharacterHealth.Health, 0, JUCharacter.CharacterHealth.MaxHealth, GUILayout.Width(120), GUILayout.Height(2));
                 }
                 else
                 {
                     EditorGUILayout.LabelField("Without health status, add the JU Health component");
-                    if (pl.GetComponent<JUHealth>() != null)
+                    if (JUCharacter.GetComponent<JUHealth>() != null)
                     {
-                        pl.CharacterHealth = pl.GetComponent<JUHealth>();
+                        JUCharacter.CharacterHealth = JUCharacter.GetComponent<JUHealth>();
                     }
                 }
                 GUILayout.Space(20);
 
 
                 GUILayout.BeginHorizontal();
-                GUILayout.Toggle(pl.IsDead, "Dead", JUTPSEditor.CustomEditorStyles.StateStyle(), GUILayout.Width(120));
-                GUILayout.Toggle(pl.IsMoving, "Moving", JUTPSEditor.CustomEditorStyles.StateStyle(), GUILayout.Width(120));
-                GUILayout.Toggle(pl.IsRunning, "Running", JUTPSEditor.CustomEditorStyles.StateStyle(), GUILayout.Width(120));
+                GUILayout.Toggle(JUCharacter.IsDead, "Dead", JUTPSEditor.CustomEditorStyles.StateStyle(), GUILayout.Width(120));
+                GUILayout.Toggle(JUCharacter.IsMoving, "Moving", JUTPSEditor.CustomEditorStyles.StateStyle(), GUILayout.Width(120));
+                GUILayout.Toggle(JUCharacter.IsRunning, "Running", JUTPSEditor.CustomEditorStyles.StateStyle(), GUILayout.Width(120));
                 GUILayout.EndHorizontal();
 
 
                 GUILayout.BeginHorizontal();
-                GUILayout.Toggle(pl.IsRolling, "Rolling", JUTPSEditor.CustomEditorStyles.StateStyle(), GUILayout.Width(120));
-                GUILayout.Toggle(pl.IsGrounded, "Grounded", JUTPSEditor.CustomEditorStyles.StateStyle(), GUILayout.Width(120));
-                GUILayout.Toggle(pl.IsJumping, "Jumping", JUTPSEditor.CustomEditorStyles.StateStyle(), GUILayout.Width(120));
+                GUILayout.Toggle(JUCharacter.IsRolling, "Rolling", JUTPSEditor.CustomEditorStyles.StateStyle(), GUILayout.Width(120));
+                GUILayout.Toggle(JUCharacter.IsGrounded, "Grounded", JUTPSEditor.CustomEditorStyles.StateStyle(), GUILayout.Width(120));
+                GUILayout.Toggle(JUCharacter.IsJumping, "Jumping", JUTPSEditor.CustomEditorStyles.StateStyle(), GUILayout.Width(120));
                 GUILayout.EndHorizontal();
 
 
                 GUILayout.BeginHorizontal();
-                GUILayout.Toggle(pl.IsMeleeAttacking, "Attacking", JUTPSEditor.CustomEditorStyles.StateStyle(), GUILayout.Width(120));
-                GUILayout.Toggle(pl.IsItemEquiped, "Armed", JUTPSEditor.CustomEditorStyles.StateStyle(), GUILayout.Width(120));
-                GUILayout.Toggle(pl.IsDriving, "Driving", JUTPSEditor.CustomEditorStyles.StateStyle(), GUILayout.Width(120));
+                GUILayout.Toggle(JUCharacter.IsMeleeAttacking, "Attacking", JUTPSEditor.CustomEditorStyles.StateStyle(), GUILayout.Width(120));
+                GUILayout.Toggle(JUCharacter.IsItemEquiped, "Armed", JUTPSEditor.CustomEditorStyles.StateStyle(), GUILayout.Width(120));
+                GUILayout.Toggle(JUCharacter.IsDriving, "Driving", JUTPSEditor.CustomEditorStyles.StateStyle(), GUILayout.Width(120));
                 GUILayout.EndHorizontal();
 
 
                 GUILayout.BeginHorizontal();
-                GUILayout.Toggle(pl.ToEnterVehicle, "Can Drive Vehicle", JUTPSEditor.CustomEditorStyles.StateStyle(), GUILayout.Width(120));
-                GUILayout.Toggle(pl.ToPickupItem, "To Pick Up Weapon", JUTPSEditor.CustomEditorStyles.StateStyle(), GUILayout.Width(120));
-                GUILayout.Toggle(pl.FiringModeIK, "Inverse Kinematics", JUTPSEditor.CustomEditorStyles.StateStyle(), GUILayout.Width(120));
+                GUILayout.Toggle(JUCharacter.ToPickupItem, "To Pick Up Weapon", JUTPSEditor.CustomEditorStyles.StateStyle(), GUILayout.Width(120));
+                GUILayout.Toggle(JUCharacter.FiringModeIK, "Inverse Kinematics", JUTPSEditor.CustomEditorStyles.StateStyle(), GUILayout.Width(120));
                 GUILayout.EndHorizontal();
 
 
                 GUILayout.BeginHorizontal();
-                GUILayout.Toggle(pl.WallAHead, "Wall Ahead", JUTPSEditor.CustomEditorStyles.StateStyle(), GUILayout.Width(120));
-                GUILayout.Toggle(pl.UsedItem, "Shooting", JUTPSEditor.CustomEditorStyles.StateStyle(), GUILayout.Width(120));
-                //GUILayout.Toggle(pl.CanUseItem, "Can Shoot", JUTPSEditor.CustomEditorStyles.StateStyle(), GUILayout.Width(120));
+                GUILayout.Toggle(JUCharacter.WallAHead, "Wall Ahead", JUTPSEditor.CustomEditorStyles.StateStyle(), GUILayout.Width(120));
+                GUILayout.Toggle(JUCharacter.UsedItem, "Shooting", JUTPSEditor.CustomEditorStyles.StateStyle(), GUILayout.Width(120));
                 GUILayout.EndHorizontal();
 
 
@@ -330,110 +397,64 @@ namespace JUTPS.CustomEditors
             }
         }
 
-        public void AdditionalSettingsDrawer(JUCharacterController pl)
+        private void AdditionalSettingsDrawer()
         {
-            if (AdditionalSettings)
+            if (_isAdditionalSettingsOpen)
             {
-                //serializedObject.FindProperty("AutoRun").boolValue = EditorGUILayout.Toggle("  Auto Run", pl.AutoRun);
-                //serializedObject.FindProperty("WalkOnRunButton").boolValue = EditorGUILayout.Toggle("  Walk On Run Button", pl.WalkOnRunButton);
                 EditorGUILayout.LabelField("Block Movement Input", EditorStyles.boldLabel);
-                serializedObject.FindProperty("BlockVerticalInput").boolValue = EditorGUILayout.Toggle("  Block Vertical Input", pl.BlockVerticalInput);
-                serializedObject.FindProperty("BlockHorizontalInput").boolValue = EditorGUILayout.Toggle("  Block Horizontal Input", pl.BlockHorizontalInput);
+                serializedObject.FindProperty(nameof(JUCharacter.BlockVerticalInput)).boolValue = EditorGUILayout.Toggle("  Block Vertical Input", JUCharacter.BlockVerticalInput);
+                serializedObject.FindProperty(nameof(JUCharacter.BlockHorizontalInput)).boolValue = EditorGUILayout.Toggle("  Block Horizontal Input", JUCharacter.BlockHorizontalInput);
 
                 EditorGUILayout.Space();
                 EditorGUILayout.LabelField("Block Firing Mode", EditorStyles.boldLabel);
-                serializedObject.FindProperty("BlockFireModeOnCursorVisible").boolValue = EditorGUILayout.Toggle("  Block FireMode On Cursor Visible", pl.BlockFireModeOnCursorVisible);
-                serializedObject.FindProperty("BlockFireModeOnPunching").boolValue = EditorGUILayout.Toggle("  Block FireMode On Punching", pl.BlockFireModeOnPunching);
+                serializedObject.FindProperty(nameof(JUCharacter.BlockFireModeOnCursorVisible)).boolValue = EditorGUILayout.Toggle("  Block FireMode On Cursor Visible", JUCharacter.BlockFireModeOnCursorVisible);
+                serializedObject.FindProperty(nameof(JUCharacter.BlockFireModeOnPunching)).boolValue = EditorGUILayout.Toggle("  Block FireMode On Punching", JUCharacter.BlockFireModeOnPunching);
 
                 EditorGUILayout.Space();
                 EditorGUILayout.LabelField("Default Skills", EditorStyles.boldLabel);
-                serializedObject.FindProperty("EnablePunchAttacks").boolValue = EditorGUILayout.Toggle("  Enable Punch Attacks", pl.EnablePunchAttacks);
-                serializedObject.FindProperty("EnableRoll").boolValue = EditorGUILayout.Toggle("  Enable Roll", pl.EnableRoll);
-
-                EditorGUILayout.Space();
-                EditorGUILayout.LabelField("Artificial Intelligence", EditorStyles.boldLabel);
-                serializedObject.FindProperty("IsArtificialIntelligence").boolValue = EditorGUILayout.Toggle("  Is AI", pl.IsArtificialIntelligence);
+                serializedObject.FindProperty(nameof(JUCharacter.EnablePunchAttacks)).boolValue = EditorGUILayout.Toggle("  Enable Punch Attacks", JUCharacter.EnablePunchAttacks);
+                serializedObject.FindProperty(nameof(JUCharacter.EnableRoll)).boolValue = EditorGUILayout.Toggle("  Enable Roll", JUCharacter.EnableRoll);
 
                 EditorGUILayout.Space();
                 EditorGUILayout.LabelField("Physical Damage System", EditorStyles.boldLabel);
-                serializedObject.FindProperty(nameof(pl.PhysicalDamage)).boolValue = EditorGUILayout.Toggle("  Enable Physical Damage", pl.PhysicalDamage); 
-                serializedObject.FindProperty(nameof(pl.DoRagdollPhysicalDamage)).boolValue = EditorGUILayout.Toggle("  Do Ragdoll On Physical Damage", pl.DoRagdollPhysicalDamage);
-                serializedObject.FindProperty(nameof(pl.PhysicalDamageStartAt)).floatValue = EditorGUILayout.FloatField("  Physical Damage Start At", pl.PhysicalDamageStartAt);
-                serializedObject.FindProperty(nameof(pl.PhysicalDamageMultiplier)).floatValue = EditorGUILayout.FloatField("  Physical Damage Multiplier", pl.PhysicalDamageMultiplier);
-                serializedObject.FindProperty(nameof(pl.RagdollStartAtDamage)).floatValue = EditorGUILayout.FloatField("  Ragdoll Start At Damage", pl.RagdollStartAtDamage);
-                EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(pl.PhysicalDamageIgnoreTags)));
+                serializedObject.FindProperty(nameof(JUCharacter.PhysicalDamage)).boolValue = EditorGUILayout.Toggle("  Enable Physical Damage", JUCharacter.PhysicalDamage);
+                serializedObject.FindProperty(nameof(JUCharacter.DoRagdollPhysicalDamage)).boolValue = EditorGUILayout.Toggle("  Do Ragdoll On Physical Damage", JUCharacter.DoRagdollPhysicalDamage);
+                serializedObject.FindProperty(nameof(JUCharacter.PhysicalDamageStartAt)).floatValue = EditorGUILayout.FloatField("  Physical Damage Start At", JUCharacter.PhysicalDamageStartAt);
+                serializedObject.FindProperty(nameof(JUCharacter.PhysicalDamageMultiplier)).floatValue = EditorGUILayout.FloatField("  Physical Damage Multiplier", JUCharacter.PhysicalDamageMultiplier);
+                serializedObject.FindProperty(nameof(JUCharacter.RagdollStartAtDamage)).floatValue = EditorGUILayout.FloatField("  Ragdoll Start At Damage", JUCharacter.RagdollStartAtDamage);
+                EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(JUCharacter.PhysicalDamageIgnoreTags)));
 
                 EditorGUILayout.Space();
-
+                EditorGUILayout.LabelField("IK Settings", EditorStyles.boldLabel);
+                serializedObject.FindProperty(nameof(JUCharacter.InverseKinematics)).boolValue = EditorGUILayout.Toggle("  Inverse Kinematics", JUCharacter.InverseKinematics);
+                //serializedObject.FindProperty(nameof(JUCharacter.RightElbowAdjust)).boolValue = EditorGUILayout.Toggle("  Right Elbow Adjust", JUCharacter.RightElbowAdjust);
+                serializedObject.FindProperty(nameof(JUCharacter.RightElbowAdjustWeight)).floatValue = EditorGUILayout.FloatField("  Right Elbow Adjust Weight", JUCharacter.RightElbowAdjustWeight);
+                //serializedObject.FindProperty(nameof(JUCharacter.LeftElbowAdjust)).boolValue = EditorGUILayout.Toggle("  Left Elbow Adjust", JUCharacter.LeftElbowAdjust);
+                serializedObject.FindProperty(nameof(JUCharacter.LeftElbowAdjustWeight)).floatValue = EditorGUILayout.FloatField("  Left Elbow Adjust Weight", JUCharacter.LeftElbowAdjustWeight);
+                serializedObject.FindProperty(nameof(JUCharacter.LookAtBodyWeight)).floatValue = EditorGUILayout.FloatField("  Look At Body Weight", JUCharacter.LookAtBodyWeight);
+                serializedObject.FindProperty(nameof(JUCharacter.HeadIKBodyWeight)).floatValue = EditorGUILayout.FloatField("  Head IK Body Weight", JUCharacter.HeadIKBodyWeight);
+                
+                EditorGUILayout.Space();
             }
         }
 
-
-
-
-
-
-        //Utility Functions
-        //public void SetAllItensInInventory(JUThirdPersonController pl)
-        //{
-        /*
-         * 
-        if (pl.anim == null) pl.anim = pl.GetComponent<Animator>();
-
-        Transform leftHand = pl.anim.GetBoneTransform(HumanBodyBones.LeftHand);
-        Transform rightHand = pl.anim.GetBoneTransform(HumanBodyBones.RightHand);
-
-        //Set in hands items
-        if (leftHand != null)
+        private void CharacterDebugVariables()
         {
-            pl.HoldableItensLeftHand = leftHand.GetComponentsInChildren<HoldableItem>();
-            foreach (HoldableItem item in pl.HoldableItensLeftHand)
-            {
-                Debug.Log("Added the ''" + item.name + "'' to Left Hand Item List");
-            }
-            
-        }
-        if (rightHand != null)
-        {
-            
-            pl.HoldableItensRightHand = rightHand.GetComponentsInChildren<HoldableItem>();
-            foreach (HoldableItem item in pl.HoldableItensRightHand)
-            {
-                Debug.Log("Added the ''" + item.name + "'' to Right Hand Item List");
-            }
-            
+            if (!_isCharacterDebugOpen)
+                return;
+
+            EditorGUI.indentLevel += 1;
+            EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(JUCharacter.CharacterDebug)));
+            EditorGUILayout.Space();
+            EditorGUI.indentLevel -= 1;
         }
 
-        //Get all itens
-        pl.Items = pl.GetComponentsInChildren<Item>();
-
-        */
-        //pl.HoldableItensRightHand = pl.GetComponentsInChildren<HoldableItem>();
-        //}
-        public void CharacterSettingsGizmosViewerr(JUCharacterController pl)
+        private void CharacterLayerMasksStartup()
         {
-            if (pl.TryGetComponent(out JUCharacterSettingsDrawer pldrw) == false)
-            {
-                GUILayout.Space(10);
-                EditorGUILayout.HelpBox("Warning: there is no *JU Character Settings Drawer* on your character", MessageType.Warning);
-                if (GUILayout.Button("Add Component ''JU Character Settings Drawer'' ", EditorStyles.miniButtonMid))
-                {
-                    JUCharacterSettingsDrawer settingsDrawer = (JUCharacterSettingsDrawer)Undo.AddComponent(pl.gameObject, typeof(JUCharacterSettingsDrawer));
-                    settingsDrawer.GroundCheck = true;
-                    settingsDrawer.StepCorrection = true;
-                    Debug.Log("Added JU Character Settings Drawer Component for the character");
-                }
-                GUILayout.Space(10);
-            }
-        }
-        public void PLlayerMasksStartup(JUCharacterController pl)
-        {
-            if (pl.WhatIsGround == 0)
-                pl.WhatIsGround = JUTPSEditor.LayerMaskUtilities.GroundMask();
-            if (pl.StepCorrectionMask == 0)
-                pl.StepCorrectionMask = JUTPSEditor.LayerMaskUtilities.GroundMask();
-            //if (pl.CrosshairHitMask == 0)
-            //    pl.CrosshairHitMask = JUTPSEditor.LayerMaskUtilities.CrosshairMask();
+            if (JUCharacter.WhatIsGround == 0)
+                JUCharacter.WhatIsGround = JUTPSEditor.LayerMaskUtilities.GroundMask();
+            if (JUCharacter.StepCorrectionMask == 0)
+                JUCharacter.StepCorrectionMask = JUTPSEditor.LayerMaskUtilities.GroundMask();
         }
     }
 }

@@ -1,30 +1,73 @@
-﻿using UnityEngine;
-using UnityEngine.UI;
+﻿using JUTPS.JUInputSystem;
+using UnityEngine;
 
 namespace JUTPS
 {
+	/// <summary>
+	/// Stores informations about player and platform input system.
+	/// </summary>
 	[AddComponentMenu("JU TPS/Gameplay/Game/Game Manager")]
 	public class JUGameManager : MonoBehaviour
 	{
-		[HideInInspector] public static JUCharacterController InstancedPlayer;
+		private static JUCharacterController _playerController;
 
-		public static bool IsMobile;
-		[SerializeField] private bool SimulateMobileDevice = false;
+		[SerializeField] private bool _simulateMobileDevice;
 
-		void Start()
+		/// <summary>
+		/// The player controll instance.
+		/// If null, will try find and return a <see cref="JUCharacterController"/> with tag "Player".
+		/// </summary>
+		public static JUCharacterController PlayerController
 		{
-			if (InstancedPlayer == null)
+			get
 			{
-				GameObject player_obj = GameObject.FindGameObjectWithTag("Player");
-				InstancedPlayer = player_obj != null ? player_obj.GetComponent<JUCharacterController>() : null;
+				if (!_playerController)
+				{
+					GameObject playerObject = GameObject.FindWithTag("Player");
+
+					if (playerObject)
+						_playerController = playerObject.GetComponent<JUCharacterController>();
+				}
+
+				return _playerController;
+			}
+			set => _playerController = value;
+		}
+
+		/// <summary>
+		/// The main instance.
+		/// </summary>
+		public static JUGameManager Instance { get; private set; }
+
+		/// <summary>
+		/// Return true if is using touch inputs.
+		/// </summary>
+		public static bool IsMobileControls { get; private set; }
+
+		private void Awake()
+		{
+			if (Instance && Instance != this)
+			{
+				Destroy(this);
+				return;
 			}
 
-			IsMobile = SimulateMobileDevice ? true : (SystemInfo.deviceType == DeviceType.Handheld);
+			Instance = this;
+#if UNITY_ANDROID && !UNITY_EDITOR
+			_simulateMobileDevice = SystemInfo.deviceType == DeviceType.Handheld;
+#endif
+			IsMobileControls = _simulateMobileDevice;
 		}
+
+		private void Update()
+		{
+			IsMobileControls = _simulateMobileDevice;
+
+		}
+
 		private void OnDestroy()
 		{
-			InstancedPlayer = null;
+			PlayerController = null;
 		}
 	}
-
 }

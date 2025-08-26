@@ -75,6 +75,21 @@ namespace JUTPS.CameraSystems
 	}
 	#endregion
 
+	[System.Serializable]
+	public struct WeaponSwayOptions
+	{
+		public bool EnableWeaponSway;
+		public float GeneralIntensity;
+		public float HorizontalIntensity;
+		public float VerticalIntensity;
+		public WeaponSwayOptions(bool enable, float intensity, float horizontalIntensity, float verticalIntensity)
+		{
+			this.EnableWeaponSway = enable;
+			this.GeneralIntensity = intensity;
+			this.HorizontalIntensity = horizontalIntensity;
+			this.VerticalIntensity = verticalIntensity;
+		}
+	}
 	public class JUCameraController : MonoBehaviour
 	{
 		[HideInInspector] public bool Aiming;
@@ -101,6 +116,8 @@ namespace JUTPS.CameraSystems
 		[Header("Camera Rotation")]
 		[Range(0, 5)] public float GeneralSensibility = 1;
 		[Range(0, 5)] public float GeneralVerticalSensibility = 1;
+		public bool InvertHorizontal;
+		public bool InvertVertical;
 
 		//Smoothed camera rotation axis
 		[HideInInspector] public float rotX;
@@ -336,6 +353,9 @@ namespace JUTPS.CameraSystems
 				OnCameraRotate();
 			}
 
+			if (InvertVertical) VerticalAxis *= -1;
+			if (InvertHorizontal) HorizonalAxis *= -1;
+
 			//Rotation X
 			rotxtarget -= (UseTimeScale ? Time.timeScale : 1) * GeneralVerticalSensibility * VerticalAxis * CurrentCameraState.RotationSensibility;
 			//Rotation Y
@@ -355,14 +375,14 @@ namespace JUTPS.CameraSystems
 				Quaternion targetRotation = TargetToFollow.root.rotation;
 				targetRotation = Quaternion.AngleAxis(rotY, transform.up);
 				targetRotation = Quaternion.AngleAxis(0, transform.forward);
-				transform.rotation = Quaternion.Lerp(transform.rotation, targetRotation, 50 * Time.deltaTime);
+				transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 50 * Time.deltaTime);
 			}
 			else
 			{
 				Quaternion targetRotation = AlternativeTargetToCalculate.rotation;
 				targetRotation = Quaternion.AngleAxis(rotY, transform.up);
 				targetRotation = Quaternion.AngleAxis(0, transform.forward);
-				transform.rotation = Quaternion.Lerp(transform.rotation, targetRotation, 50 * Time.deltaTime);
+				transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 50 * Time.deltaTime);
 			}
 			mCamera.transform.parent.localRotation = Quaternion.FromToRotation(transform.up, upward) * rot;
 		}

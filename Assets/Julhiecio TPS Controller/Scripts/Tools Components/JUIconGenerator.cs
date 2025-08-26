@@ -38,6 +38,7 @@ namespace JUTPS.Utilities
         public float RenderDistance = 1.5f;
         public CameraViewMode Projection = CameraViewMode.Perspective;
         public enum CameraViewMode { Perspective, Orthographic }
+        public string PathToSave = "/Julhiecio TPS Controller/Textures/Generated Icons/";
 
         [HideInInspector] public Quaternion Angles;
 
@@ -177,7 +178,12 @@ namespace JUTPS.Utilities
         public void SaveTexture()
         {
             byte[] bytes = ConvertRenderTextureTo2DTexture(currentrendertexture).EncodeToPNG();
-            string path = "/Julhiecio TPS Controller/Textures/Generated Icons/" + this.gameObject.name + Random.Range(0000, 9000) + ".png";
+            string path = PathToSave + this.gameObject.name + Random.Range(0000, 9000) + ".png";
+            if (System.IO.Directory.Exists(Application.dataPath + PathToSave) == false)
+            {
+                System.IO.Directory.CreateDirectory(Application.dataPath + PathToSave);
+                Debug.Log("Icon Generator created the directory: " + Application.dataPath + PathToSave);
+            }
             System.IO.File.WriteAllBytes(Application.dataPath + path, bytes);
             Debug.Log("Your icon has been saved on folder:   " + path);
         }

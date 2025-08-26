@@ -17,20 +17,23 @@ namespace JUTPS.ArmorSystem
                 Health = GetComponentInParent<JUHealth>();
             }
         }
-        public float DoDamage(float Damage)
+        public float DoDamage(JUHealth.DamageInfo damageInfo)
         {
             if (Health == null)
             {
                 Debug.LogWarning("Could not do damage as the Health variable is null");
                 return 0;
             }
-            Health.DoDamage(DamageMultiplier * Damage);
+
+            damageInfo.Damage *= DamageMultiplier;
+
+            Health.DoDamage(damageInfo);
             if (ArmorProtecting != null)
             {
-                ArmorProtecting.DoDamageOnArmor(Damage);
+                ArmorProtecting.DoDamageOnArmor(damageInfo.Damage);
             }
 
-            return DamageMultiplier * Damage;
+            return damageInfo.Damage;
         }
     }
 

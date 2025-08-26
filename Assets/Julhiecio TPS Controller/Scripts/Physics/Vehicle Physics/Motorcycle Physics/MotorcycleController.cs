@@ -1,195 +1,314 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 using JUTPS.JUInputSystem;
 
 namespace JUTPS.VehicleSystem
 {
-
+    /// <summary>
+    /// Ju motorcycle vehicle controller.
+    /// </summary>
     [AddComponentMenu("JU TPS/Vehicle System/Motorcycle Controller")]
-    public class MotorcycleController : Vehicle
+    public class MotorcycleController : JUWheeledVehicle
     {
-        [HideInInspector] public float InclinationValue;
+        /// <summary>
+        /// Stores vehicle <see cref="WheelCollider"/> and wheel behavior.
+        /// </summary>
+        [System.Serializable]
+        public struct Wheel
+        {
+            /// <summary>
+            /// The max wheel steer angle, a value between -180 to 180.
+            /// </summary>
+            [Range(-180, 180)] public float MaxSteerAngle;
 
-        [Header("Physic Settings")]
-        [Range(0, 60)] public float MaxLeanAngle = 45;
-        public WheelCollider FrontWheel;
-        public WheelCollider BackWheel;
-        public Transform FrontWheelModel;
-        public Transform BackWheelModel;
+            /// <summary>
+            /// The wheel throttle intensity, a value between 0 and 1 where 0 has not acceleration and 1 has acceleration.
+            /// </summary>
+            [Range(0, 1)] public float ThrottleIntensity;
 
-        [Header("Anti Overturn")]
+            /// <summary>
+            /// The wheel brake intensity, a value between 0 and 1 where 0 has not brake and 1 has brake force.
+            /// </summary>
+            [Range(0, 1)] public float BrakeIntensity;
+
+            /// <summary>
+            /// The wheel collider.
+            /// </summary>
+            public WheelCollider WheelCollider;
+
+            /// <summary>
+            /// The wheel mesh transform that will follow the <see cref="WheelCollider"/>
+            /// </summary>
+            public Transform WheelMesh;
+        }
+
+        /// <summary>
+        /// Stores properties related with motorcycle inclination on curves in high speed.
+        /// </summary>
+        [System.Serializable]
+        public struct InclinationSettings
+        {
+            /// <summary>
+            /// The inclination sensitive in high speeds.
+            /// </summary>
+            [Min(0)] public float Sensitive;
+
+            /// <summary>
+            /// The inclination speed.
+            /// </summary>
+            [Min(0.1f)] public float Speed;
+
+            /// <summary>
+            /// Max motorcycle inclination on curves.
+            /// </summary>
+            [Range(0, 60)] public float MaxAngle;
+
+            /// <summary>
+            /// The normal vehicle inclination when stoped, very useful to simulate the character foot on ground when the motorcycle is stoped.
+            /// </summary>
+            [Range(-45, 45)] public float StopedInclination;
+
+            /// <summary>
+            /// The vehicle aero-dynamic drag when grounded.
+            /// </summary>
+            [Min(0)] public float OnGroundDrag;
+
+            /// <summary>
+            /// The vehicle aero-dynamic drag when grounded.
+            /// </summary>
+            [Min(0)] public float OffGroundDrag;
+        }
+
+        private Transform _rotationPivotParent;
+        private Transform _rotationPivotChild;
+
+        /// <summary>
+        /// The front wheel of the motorcycle.
+        /// </summary>
+        [Header("Wheels")]
+        public Wheel FrontWheel;
+
+        /// <summary>
+        /// The back wheel of the motorcycle.
+        /// </summary>
+        public Wheel BackWheel;
+
+        /// <summary>
+        /// Align vehicle on ground normal when grounded.
+        /// </summary>
         public VehicleOverturnCheck OverturnCheck;
 
+        /// <summary>
+        /// Stores properties related with motorcycle inclination on curves in high speed.
+        /// </summary>
+        public InclinationSettings Inclination;
+
+        /// <summary>
+        /// If true, the vehicle will align the up with the ground if the ground collider tag is <seealso cref="LoopTag"/>.
+        /// </summary>
         [Header("Looping")]
         public bool EnableLooping;
-        public string LoopTag = "Loop";
-        public bool IsLooping;
 
-        [Header("Settings")]
-        public bool UseDefaultInputs = true;
+        /// <summary>
+        /// The loop collider tag, used to align the vehicle in a specific surface if <seealso cref="EnableLooping"/> is true.
+        /// </summary>
+        public string LoopTag;
 
-        private Transform RotationPivotParent, RotationPivotChild;
-        void Start()
+        /// <summary>
+        /// The velocity to rotate to the ground normal direction if the it's have the <seealso cref="LoopTag"/> tag.
+        /// </summary>
+        [Min(0.1f)] public float AlignWithLoopSpeed;
+
+        /// <summary>
+        /// Current motorcycle inclination.
+        /// </summary>
+        public float CurrentInclination { get; private set; }
+
+        /// <summary>
+        /// Return true if the <seealso cref="JUVehicle.IsGrounded"/> is true and the ground collider surface have a tag <seealso cref="LoopTag"/>. <para/>
+        /// When is looping, he vehicle will align the normal with the ground direction.
+        /// </summary>
+        public bool IsLooping { get; private set; }
+
+        /// <summary>
+        /// Create a <see cref="MotorcycleController"/> gameObject component instance.
+        /// </summary>
+        public MotorcycleController() : base()
         {
-            CreateSteeringWheelRotationPivot(SteeringWheel);
-            SetVehicleCenterOfMass(VehicleEngine.CenterOfMass);
-
-            if (FrontWheelModel.parent != SteeringWheel)
+            FrontWheel = new Wheel
             {
-                FrontWheelModel.parent = SteeringWheel.transform;
-            }
-            //Create transforms
-            RotationPivotParent = new GameObject("Motorcycle Lean Angle Pivot").transform;
-            RotationPivotChild = new GameObject("Motorcycle Lean Angle Z").transform;
+                MaxSteerAngle = 35,
+                WheelCollider = null,
+                WheelMesh = null,
+                BrakeIntensity = 1,
+                ThrottleIntensity = 0
+            };
 
-            RotationPivotChild.SetParent(RotationPivotParent);
-            RotationPivotParent.position = transform.position;
-            RotationPivotParent.hideFlags = HideFlags.HideInHierarchy;
+            BackWheel = new Wheel()
+            {
+                MaxSteerAngle = 0,
+                WheelCollider = null,
+                WheelMesh = null,
+                ThrottleIntensity = 1,
+                BrakeIntensity = 1
+            };
 
-            //Set Parent
-            RotationPivotChild.SetParent(RotationPivotChild);
+            Inclination = new InclinationSettings()
+            {
+                Sensitive = 3,
+                Speed = 1,
+                MaxAngle = 45,
+                StopedInclination = 20,
+                OnGroundDrag = 5,
+                OffGroundDrag = 1
+            };
 
-            //Set Position
-            RotationPivotParent.position = transform.position;
+            LoopTag = "Loop";
+            AlignWithLoopSpeed = 8;
 
-            //Hide Rotation Pivot
-            RotationPivotParent.hideFlags = HideFlags.HideInHierarchy;
-
-            //DriveVehicles.DriveVehicle(this, FindObjectOfType<JUThirdPersonController>().gameObject);
+            // (0, 0, 0) is not recommended for motorcycles because it's makes more hard to
+            // stabilized if stoped.
+            Engine.CenterOfMass = Vector3.up * 0.1f;
         }
 
-        protected override void VehicleUpdate()
+        /// <inheritdoc/>
+        protected override void Start()
         {
-            //Ground Check
-            GroundCheck.GroundCheck(transform);
+            base.Start();
 
-            //Set default inputs
-            if (UseDefaultInputs)
-            {
-                SetEngineInputs(
-                JUInput.GetAxis(JUInput.Axis.MoveHorizontal),   //Left/Right Input Value
-                JUInput.GetAxis(JUInput.Axis.MoveVertical),     //Forward/Backward Input Value
-                JUInput.GetButton(JUInput.Buttons.JumpButton)); //Brake Vehicle Input Value
-            }
+            // Create transforms to manage motorcycle inclination.
+            _rotationPivotParent = new GameObject("Motorcycle Lean Angle Pivot").transform;
+            _rotationPivotChild = new GameObject("Motorcycle Lean Angle Z").transform;
 
-            //Anti Overturn
+            _rotationPivotChild.SetParent(_rotationPivotParent);
+            _rotationPivotParent.position = transform.position;
+            _rotationPivotParent.hideFlags = HideFlags.HideInHierarchy;
+
+            _rotationPivotChild.SetParent(_rotationPivotChild);
+            _rotationPivotParent.position = transform.position;
+            _rotationPivotParent.hideFlags = HideFlags.HideInHierarchy;
+        }
+
+        /// <inheritdoc/>
+        protected override void Update()
+        {
+            base.Update();
+
+            if (!IsOn)
+                return;
+
+            // Anti Overturn
             OverturnCheck.OverturnCheck(transform);
             OverturnCheck.AntiOverturn(transform);
-
-            //Update Wheel Models
-            UpdateWheelModelTransformation(FrontWheel, FrontWheelModel, true);
-            UpdateWheelModelTransformation(BackWheel, BackWheelModel);
-
-            //Steering Wheel Rotation
-            SteeringWheel.transform.localEulerAngles = SteeringWheelRotation(SteeringWheel, FrontWheel).eulerAngles;
         }
-        protected override void VehiclePhysicsUpdate()
+
+        /// <inheritdoc/>
+        protected override void FixedUpdate()
         {
-            //Turn Off Vehicle
+            base.FixedUpdate();
+
             if (!IsOn)
-            {
-                //Set Wheels brake
-                WheelBrake(FrontWheel);
-                WheelBrake(BackWheel);
                 return;
-            }
 
-            //Set Wheels torque
-            if (GroundCheck.IsGrounded)
-            {
-                WheelTorque(BackWheel);
-                WheelTorque(FrontWheel);
-            }
-            //Set Wheels brake
-            WheelBrake(FrontWheel);
-            WheelBrake(BackWheel);
-
-            //Set Front Wheel Steer Angle
-            float SteerAngleDirection = Mathf.Lerp(GetSmoothedHorizontalMovement(), GetSmoothedHorizontalMovement() / 2.5f, GetVehicleCurrentSpeed(0.1f));
-            WheelSteerAngle(FrontWheel, SteerAngleDirection * MaxSteerAngle, MaxSteerAngle);
-            //Debug.Log("Vehicle Speed: " + GetVehicleCurrentSpeed().ToString());
-
-
-            //Inclination Calculation
-            if (GetVehicleCurrentSpeed() > 1)
-            {
-                InclinationValue = GetHorizontalMovement() * GetVehicleCurrentSpeed(2);
-            }
-            else
-            {
-                InclinationValue = Mathf.Lerp(InclinationValue, 25, Time.deltaTime);
-            }
-            InclinationValue = Mathf.Clamp(InclinationValue, -MaxLeanAngle, MaxLeanAngle);
-
-            //Inclination
-            if (IsLooping == false)
-            {
+            // Inclination
+            if (!IsLooping)
                 MotorcycleLeanSystem();
-            }
 
-            //On Air Rotation
-            if (GroundCheck.IsGrounded == false) Align(Vector3.up, 0.5f);
+            if (EnableLooping)
+                LoopSystem();
 
-            //Limit Speed
-            LimitVehicleSpeed(GroundCheck.IsGrounded, false);
-
-            //Loop System
-            LoopSystem();
-        }
-        public Vector3 GetMotorcycleGroundAngle(Vector3 FrontWheelHitNormal, Vector3 BackWheelHitNormal)
-        {
-            Vector3 Angle = new Vector3((FrontWheelHitNormal.x + BackWheelHitNormal.x) / 2, (FrontWheelHitNormal.y + BackWheelHitNormal.y) / 2, (FrontWheelHitNormal.z + BackWheelHitNormal.z) / 2);
-            return Angle;
+            CanTurnToUpInAir = !IsLooping;
         }
 
         protected virtual void MotorcycleLeanSystem()
         {
-            //Get wheel ground hits
-            RaycastHit FrontWheelHit;
-            RaycastHit BackWheelHit;
-
-            //Do raycasts on wheels
-            Physics.Raycast(FrontWheelModel.position, -transform.up, out FrontWheelHit, FrontWheel.radius + 0.05f, GroundCheck.RaycastLayerMask);
-            Physics.Raycast(BackWheelModel.position, -transform.up, out BackWheelHit, BackWheel.radius + 0.05f, GroundCheck.RaycastLayerMask);
-
-            //Ground Angle
-            Vector3 GroundAngle = Vector3.zero;
-
-            //If the two wheel are grouded, create a new ground angle
-            if (FrontWheelHit.normal != Vector3.zero && BackWheelHit.normal != Vector3.zero)
+            // Do not execute the inclination if the parent is not correct
+            if (_rotationPivotChild.parent != _rotationPivotParent)
             {
-                //Create a Ground Angle between wheel ground hits
-                GroundAngle = GetMotorcycleGroundAngle(FrontWheelHit.normal, BackWheelHit.normal);
-            }
-            else
-            {
-                //Reset Ground Angle, the aligment will be according the GroundCheck Hit
-                GroundAngle = Vector3.zero;
+                Debug.LogError($"The parent of the {nameof(_rotationPivotChild)} variable is not the same {typeof(GameObject)} as the {nameof(_rotationPivotParent)}");
+                return;
             }
 
-            //Simulate Motorcycle Lean System
-            SimulateVehicleInclination(InclinationValue, MaxLeanAngle, RotationPivotParent, RotationPivotChild, true, 3, GroundAligment: GroundAngle);
+            if (!FrontWheel.WheelCollider || !FrontWheel.WheelMesh || !BackWheel.WheelCollider || !BackWheel.WheelMesh)
+                return;
+
+            if (!FrontWheel.WheelCollider.GetGroundHit(out WheelHit frontHit) || !BackWheel.WheelCollider.GetGroundHit(out WheelHit rearHit))
+                return;
+
+            Vector3 groundNormal = (frontHit.normal + rearHit.normal).normalized;
+            SimulateVehicleInclination(groundNormal);
         }
+
         protected virtual void LoopSystem()
         {
-            if (!EnableLooping || GroundCheck.GroundHit.point == Vector3.zero) return;
+            IsLooping = false;
 
-            //Loop System
-            IsLooping = (GroundCheck.GroundHit.collider.tag == LoopTag);
+            if (!IsGrounded)
+                return;
+
+            if (!FrontWheel.WheelCollider.GetGroundHit(out WheelHit frontHit) || !BackWheel.WheelCollider.GetGroundHit(out WheelHit rearHit))
+                return;
+
+            IsLooping = frontHit.collider.tag.Equals(LoopTag);
 
             if (IsLooping)
             {
-                Debug.Log("IS LOOPING");
-                SimulateGroundAlignment();
+                // Align the motorcycle with the loop face.
+                Vector3 loopNormal = (frontHit.normal + rearHit.normal).normalized;
+                AlignVehicleToNormal(loopNormal, AlignWithLoopSpeed);
             }
         }
 
-        private void OnDrawGizmos()
+        private void SimulateVehicleInclination(Vector3 groundAligment)
         {
-            VehicleGizmo.DrawVector3Position(CharacterExitingPosition, transform, "Exit Position", Color.green);
-            VehicleGizmo.DrawVehicleInclination(RotationPivotParent, RotationPivotChild);
+            if (!IsGrounded)
+                return;
+
+            // Inclination Calculation
+            if (Mathf.Abs(ForwardSpeed) > 1) CurrentInclination = Horizontal * Mathf.Abs(ForwardSpeed) * Inclination.Sensitive;
+            else CurrentInclination = Mathf.Lerp(CurrentInclination, Inclination.StopedInclination, Time.deltaTime);
+            CurrentInclination = Mathf.Clamp(CurrentInclination, -Inclination.MaxAngle, Inclination.MaxAngle);
+
+            float inclinationSpeed = Mathf.Clamp01(Inclination.Speed * DrivePadSmooth.RiseRateSteer * CurrentSteerVsSpeed * Time.deltaTime);
+
+            // Vehicle rotation.
+            Quaternion pivotTargetRotation = Quaternion.FromToRotation(_rotationPivotParent.up, groundAligment) * _rotationPivotParent.rotation;
+            _rotationPivotChild.localEulerAngles = new Vector3(0, 0, -CurrentInclination);
+            _rotationPivotParent.position = transform.position;
+            _rotationPivotParent.rotation = Quaternion.Slerp(_rotationPivotParent.rotation, pivotTargetRotation, inclinationSpeed);
+            _rotationPivotParent.localEulerAngles = new Vector3(_rotationPivotParent.localEulerAngles.x, transform.localEulerAngles.y, _rotationPivotParent.localEulerAngles.z);
+
+            // Apply the inclination.
+            transform.rotation = Quaternion.Lerp(transform.rotation, _rotationPivotChild.rotation, inclinationSpeed);
+
+            //Freeze rigidbody rotation.
+            if (IsGrounded)
+            {
+                RigidBody.angularDamping = Inclination.OnGroundDrag;
+                RigidBody.constraints = RigidbodyConstraints.FreezeRotationZ;
+            }
+            else
+            {
+                RigidBody.angularDamping = Inclination.OffGroundDrag;
+                RigidBody.constraints = RigidbodyConstraints.None;
+            }
+        }
+
+        /// <inheritdoc/>
+        protected override void OnDrawGizmos()
+        {
+            base.OnDrawGizmos();
+            VehicleGizmo.DrawVehicleInclination(_rotationPivotParent, _rotationPivotChild);
             VehicleGizmo.DrawOverturnCheck(OverturnCheck, transform);
+        }
+
+        /// <inheritdoc/>
+        public override void UpdateWheelsData()
+        {
+            base.UpdateWheelsData();
+
+            WheelsData = new WheelData[2];
+            WheelsData[0] = new WheelData(FrontWheel.WheelCollider, FrontWheel.WheelMesh, true, FrontWheel.ThrottleIntensity, FrontWheel.BrakeIntensity, FrontWheel.MaxSteerAngle);
+            WheelsData[1] = new WheelData(BackWheel.WheelCollider, BackWheel.WheelMesh, true, BackWheel.ThrottleIntensity, BackWheel.BrakeIntensity, BackWheel.MaxSteerAngle);
         }
     }
 

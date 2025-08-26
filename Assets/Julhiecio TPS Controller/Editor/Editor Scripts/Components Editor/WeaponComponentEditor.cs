@@ -13,7 +13,7 @@ namespace JUTPS.CustomEditors
     public class WeaponComponentEditor : Editor
     {
         //Settings Areas
-        public bool WeaponSettings, Precision, Shooting, Wield, ProceduralAnimations, IKSettings, Audio;
+        public bool WeaponSettings, Precision, Shooting, Wield, ProceduralAnimations, IKSettings, Audio, Events;
         Weapon w;
 
         //Inspector Draw
@@ -47,6 +47,9 @@ namespace JUTPS.CustomEditors
 
                 Audio = GUILayout.Toggle(Audio, "Audios", JUTPSEditor.CustomEditorStyles.Toolbar());
                 AudioVariables(w);
+
+                Events = GUILayout.Toggle(Events, "Events", JUTPSEditor.CustomEditorStyles.Toolbar());
+                EventVariables(w);
             }
 
             serializedObject.ApplyModifiedProperties();
@@ -202,6 +205,14 @@ namespace JUTPS.CustomEditors
             }
         }
 
+        public void EventVariables(Weapon w)
+        {
+            if (Events)
+            {
+                var ShotEvent = serializedObject.FindProperty(nameof(w.OnShot));
+                EditorGUILayout.PropertyField(ShotEvent);
+            }
+        }
 
         //Scene View Handles
         private void OnSceneGUI()

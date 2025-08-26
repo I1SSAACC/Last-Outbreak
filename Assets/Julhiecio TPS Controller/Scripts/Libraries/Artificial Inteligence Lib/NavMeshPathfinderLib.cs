@@ -43,22 +43,15 @@ namespace JUTPS.AI
             NavMeshPath navmesh_path = new NavMeshPath();
             //NavMesh.CalculatePath(SourcePosition, hitNv.position, NavmeshArea, navmesh_path);
 
-            if (NavMesh.FindClosestEdge(TargetPosition, out NavMeshHit hitt, NavmeshArea))
-            {
-                NavMesh.CalculatePath(SourcePosition, hitt.position, NavmeshArea, navmesh_path);
-                //return navmesh_path.corners;
-            }
 
-
-            //If still invalid
-            if (navmesh_path.status == NavMeshPathStatus.PathPartial || navmesh_path.status == NavMeshPathStatus.PathInvalid)
+            if (navmesh_path.status != NavMeshPathStatus.PathComplete)
             {
                 //Get valid source position
                 NavMeshHit hit;
-                NavMesh.SamplePosition(SourcePosition, out hit, 10, NavmeshArea);
+                NavMesh.SamplePosition(SourcePosition, out hit, 5, NavmeshArea);
                 //Get valid END position
                 NavMeshHit hitEnd;
-                NavMesh.SamplePosition(TargetPosition, out hitEnd, 10, NavmeshArea);
+                NavMesh.SamplePosition(TargetPosition, out hitEnd, 5, NavmeshArea);
 
                 if (!hit.hit || !hitEnd.hit) { Debug.LogWarning("Could not calculate NavMesh path, invalid target/source position"); return new Vector3[0] { }; }
 
@@ -66,6 +59,15 @@ namespace JUTPS.AI
                 NavMesh.CalculatePath(hit.position, hitEnd.position, NavmeshArea, navmesh_path);
             }
 
+            //If still invalid
+            if (navmesh_path.status != NavMeshPathStatus.PathComplete)
+            {
+                if (NavMesh.FindClosestEdge(TargetPosition, out NavMeshHit hitt, NavmeshArea))
+                {
+                    NavMesh.CalculatePath(SourcePosition, hitt.position, NavmeshArea, navmesh_path);
+                    //return navmesh_path.corners;
+                }
+            }
             // >[ Old Code ]
             /* 
             //If cannot do pathfinding with current position, create a path with the closest navmesh edge
@@ -141,7 +143,7 @@ namespace JUTPS.AI
             Vector3 position = Vector3.zero;
 
             NavMeshHit hit;
-            NavMesh.SamplePosition(targetPosition, out hit, 2, NavMesh.AllAreas);
+            NavMesh.SamplePosition(targetPosition, out hit, 10, NavMesh.AllAreas);
 
             Vector3 dir = (targetPosition - hit.position).normalized;
             position = hit.position - dir * offsetDirection;

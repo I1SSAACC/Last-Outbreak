@@ -12,7 +12,6 @@ namespace JUTPS.Utilities
 
         private void OnTriggerEnter(Collider other)
         {
-            Debug.Log("test");
             if (CharacterTag != "")
             {
                 if (other.gameObject.CompareTag(CharacterTag))

@@ -1,12 +1,11 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 namespace JUTPS.ArmorSystem
 {
 
 
     [AddComponentMenu("JU TPS/Armor System/Armor")]
-    public class Armor : JUTPS.ItemSystem.Item
+    public class Armor : JUTPS.ItemSystem.JUItem
     {
         [Header("Visual Settings")]
         public GameObject[] Parts;
@@ -18,6 +17,9 @@ namespace JUTPS.ArmorSystem
         public float DamageMultiplier = 0.5f;
         public DamageableBodyPart[] DamageablesToProtect;
         private List<float> defaultDamageMultiplier = new List<float>();
+
+        public bool Equiped { get; internal set; }
+
         void Awake()
         {
             MaxHealth = Health;
@@ -84,6 +86,14 @@ namespace JUTPS.ArmorSystem
                 RemoveItem();
                 Health = 0;
             }
+        }
+
+        public override void RemoveItem()
+        {
+            base.RemoveItem();
+
+            if (ItemQuantity == 0 || Health <= 0 || !Unlocked)
+                Equiped = false;
         }
     }
 

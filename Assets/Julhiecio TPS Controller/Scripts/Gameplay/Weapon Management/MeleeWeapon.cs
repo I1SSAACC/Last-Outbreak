@@ -5,7 +5,7 @@ using JUTPSEditor.JUHeader;
 using JUTPS.InventorySystem;
 namespace JUTPS.WeaponSystem
 {
-    public class MeleeWeapon : JUTPS.ItemSystem.HoldableItem
+    public class MeleeWeapon : JUTPS.ItemSystem.JUHoldableItem
     {
         [JUHeader("Melee Weapon Settings")]
         public string AttackAnimatorParameterName = "OneHandMeleeAttack";
@@ -25,7 +25,7 @@ namespace JUTPS.WeaponSystem
         {
             base.Update();
             DamagerToEnable.gameObject.SetActive(IsUsingItem);
-            if (DamagerToEnable.Collided && EnableHealthLoss)
+            if (DamagerToEnable.IsColliding && EnableHealthLoss)
             {
                 MeleeWeaponHealth -= DamagePerUse;
                 if (MeleeWeaponHealth <= 0)

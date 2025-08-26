@@ -1,162 +1,324 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System;
+using System.Linq;
 using UnityEngine;
-using JUTPS.ArmorSystem;
 using JUTPS.FX;
-
+using JUTPS.ArmorSystem;
 using JUTPSEditor.JUHeader;
+using System.Collections.Generic;
+using JUTPS.CharacterBrain;
 
 namespace JUTPS
 {
+    /// <summary>
+    /// A hit detector that apply damage to another collider with <see cref="JUHealth"/> or a <see cref="DamageableBodyPart"/>.
+    /// </summary>
     [AddComponentMenu("JU TPS/Armor System/JU Damager")]
     public class Damager : MonoBehaviour
     {
-        [JUHeader("Damager Settings")]
-        public float Damage = 20;
-        public bool DisableOnStart = true;
-        public float HitMinTime = 0.5f;
-        private float CurrentHitTime;
+        private JUCharacterController _characterOwner;
 
+        private float _currentHitTime;
+        private Vector3 _lastPosition;
+        private Vector3 _startLocalPosition;
+        private Collider _oldHit;
+
+        /// <summary>
+        /// If true, show an UI indicator with the damage force on the other hitted collider.
+        /// </summary>
+        public bool ShowHitMarker;
+
+        /// <summary>
+        /// Starts the game with this <see cref="Damager"/> disabled by default?
+        /// </summary>
+        public bool DisableOnStart;
+
+        /// <summary>
+        /// The damage force.
+        /// </summary>
+        [JUHeader("Damager Settings")]
+        public float Damage;
+
+        /// <summary>
+        /// Used to avoid multi damage calls, set the damage interval on each hit.
+        /// </summary>
+        public float HitMinTime = 0.5f;
+
+        /// <summary>
+        /// Detect hit using raycast.
+        /// </summary>
         [JUHeader("Damage Detection Settings")]
-        public bool RaycastingMode = true;
-        public LayerMask RaycastCollideWith;
+        public bool RaycastingMode;
         public float RaycastDistance;
+        public LayerMask RaycastLayer;
 
         [JUHeader("Collision Detection Mode Settings")]
-        public bool IgnoreAllCollidersOfRootGameobject = true;
-        public Collider[] AllRootGameobjectColliders;
+        public bool IgnoreRootColliders;
         public bool LockStartPosition;
+        public Collider[] AllCollidersToIgnore;
 
         [JUHeader("FX Settings")]
         public string[] TagsToDamage = { "Untagged", "Skin", "Player", "Enemy" };
-        public List<SurfaceAudiosWithFX> HitParticlesList = new();
+        public SurfaceAudiosWithFX[] HitParticlesList;
         public AudioSource HitSoundsAudioSource;
 
-        [HideInInspector] public bool Collided;
-        private Vector3 startedLocalPosition;
-        private Rigidbody rb;
-        private bool CanHit = true;
+        public bool CanHit { get; private set; }
+        public bool IsColliding { get; private set; }
+        public Rigidbody Rigidbody { get; private set; }
 
-        public GameObject Owner;
+        public Damager()
+        {
+            CanHit = true;
+
+            Damage = 20;
+            HitMinTime = 0.5f;
+            DisableOnStart = true;
+            ShowHitMarker = false;
+
+            RaycastingMode = true;
+            RaycastDistance = 0.9f;
+            RaycastLayer = 1;
+
+            IgnoreRootColliders = true;
+            LockStartPosition = true;
+
+            TagsToDamage = new string[] { "Untagged", "Skin", "Player", "Enemy" };
+            HitParticlesList = new SurfaceAudiosWithFX[0];
+            HitSoundsAudioSource = null;
+        }
+
         private void Awake()
         {
-            startedLocalPosition = transform.localPosition;
-            CharacterBrain.JUCharacterBrain tpsCharacter = GetComponentInParent<CharacterBrain.JUCharacterBrain>();
-            Owner = tpsCharacter == null ? null : tpsCharacter.gameObject;
+            _startLocalPosition = transform.localPosition;
+            Rigidbody = GetComponent<Rigidbody>();
+
+            if (transform.root)
+                _characterOwner = transform.root.GetComponentInChildren<JUCharacterController>();
+
+            if (IgnoreRootColliders)
+                SetupCollidersToIgnore();
         }
         private void Start()
         {
-            rb = GetComponent<Rigidbody>();
-            if (IgnoreAllCollidersOfRootGameobject)
-            {
-                AllRootGameobjectColliders = transform.root.GetComponentsInChildren<Collider>();
-
-                if (GetComponent<Collider>() == null) return;
-
-                Collider DamageCollider = GetComponent<Collider>();
-                foreach (Collider col in AllRootGameobjectColliders)
-                {
-                    if (col != DamageCollider)
-                    {
-                        Physics.IgnoreCollision(col, DamageCollider, true);
-                    }
-                }
-            }
-            if (DisableOnStart) gameObject.SetActive(false);
+            if (DisableOnStart)
+                gameObject.SetActive(false);
         }
-        private GameObject oldHitedCollider;
-        private RaycastHit hit;
+
+        private void OnEnable()
+        {
+            _lastPosition = transform.position;
+        }
+
+        private void OnDisable()
+        {
+            _oldHit = null;
+        }
 
         private void Update()
         {
             if (LockStartPosition)
             {
-                transform.localPosition = startedLocalPosition;
-                if (rb != null)
+                transform.localPosition = _startLocalPosition;
+                if (Rigidbody)
                 {
-                    rb.linearVelocity = Vector3.zero;
-                    rb.isKinematic = false;
+                    Rigidbody.linearVelocity = Vector3.zero;
+                    Rigidbody.isKinematic = false;
                 }
             }
- 
-            if (RaycastingMode == false || RaycastDistance == 0) return;
-            //Debug.Log("Is raycasting mode active");
-            if (Physics.Raycast(transform.position, transform.forward, out RaycastHit hit, RaycastDistance, RaycastCollideWith))
-            {
-                //Debug.Log("raycasting somethings");
-                if (hit.collider.gameObject != oldHitedCollider)
-                {
-                    for (int i = 0; i < TagsToDamage.Length; i++)
-                    {
-                        if (hit.collider.transform.CompareTag(TagsToDamage[i]) && CanHit)
-                        {
-                            DoDamage(hit, null, Damage, HitParticlesList, HitSoundsAudioSource, AllRootGameobjectColliders);
-                            Collided = true;
-                            Invoke(nameof(DisableCollidedState), 0.1f);
-                            DisableDamagingForSeconds(HitMinTime);
-                        }
-                    }
-                    oldHitedCollider = hit.collider.gameObject;
-                }
-            }
-            else
-            {
-                oldHitedCollider = null;
-            }
-        }
-        private void OnDisable()
-        {
-            oldHitedCollider = null;
-        }
-        private void DisableCollidedState()
-        {
-            Collided = false;
-        }
-        public void DisableDamagingForSeconds(float DisabledSeconds)
-        {
-            CanHit = false;
-            if (IsInvoking(nameof(EnableDamaging)) == false) Invoke(nameof(EnableDamaging), DisabledSeconds);
-        }
-        public void EnableDamaging()
-        {
-            CanHit = true;
+
+            if (RaycastingMode)
+                CheckRaycastHit();
         }
 
         private void OnCollisionEnter(Collision collision)
         {
-            for (int i = 0; i < TagsToDamage.Length; i++)
-            {
-                if (collision.transform.CompareTag(TagsToDamage[i]) && CanHit)
-                {
-                    if (collision.gameObject.layer == 9)
-                    {
-                        if (collision.gameObject.GetComponentInChildren<DamageableBodyPart>() != null) return;
-                    }
+            Collider collider = collision.collider;
+            Vector3 point = collision.contacts[0].point;
+            Vector3 normal = collision.contacts[0].normal;
 
-                    DoDamage(collision, Damage, HitParticlesList, HitSoundsAudioSource);
-                    Collided = true;
-                    Invoke(nameof(DisableCollidedState), 0.1f);
-                    DisableDamagingForSeconds(HitMinTime);
-                }
-            }
+            if (collider is BoxCollider || collider is SphereCollider || collider is CapsuleCollider)
+                point = collider.ClosestPoint(point);
+
+            CheckCollisionHit(collision.collider, point, normal);
         }
+
         private void OnTriggerEnter(Collider other)
         {
-            for (int i = 0; i < TagsToDamage.Length; i++)
-            {
-                if (other.transform.tag == TagsToDamage[i] && CanHit)
-                {
-                    if (other.gameObject.layer == 9)
-                    {
-                        if (other.gameObject.GetComponentInChildren<DamageableBodyPart>() != null) return;
-                    }
+            Vector3 point = transform.position;
+            Vector3 normal = -transform.forward;
 
-                    DoDamage(other, Damage, HitParticlesList, HitSoundsAudioSource);
-                    Collided = true;
+            if (other is BoxCollider || other is SphereCollider || other is CapsuleCollider)
+                point = other.ClosestPoint(point);
+
+            CheckCollisionHit(other, point, normal);
+        }
+
+        private void CheckCollisionHit(Collider other, Vector3 point, Vector3 normal)
+        {
+            if (!CanHit)
+                return;
+
+            if (!TagsToDamage.Contains(other.tag))
+                return;
+
+            if (other.gameObject.layer == 9) // Characters layer
+            {
+                if (other.gameObject.GetComponentInChildren<DamageableBodyPart>() != null)
+                    return;
+            }
+
+            IsColliding = true;
+            DoDamage(other, point, normal, Damage, HitParticlesList, HitSoundsAudioSource);
+            Invoke(nameof(DisableCollidedState), 0.1f);
+            DisableDamagingForSeconds(HitMinTime);
+        }
+
+        private void CheckRaycastHit()
+        {
+            if (!CanHit || RaycastDistance == 0)
+                return;
+
+            var hits = Physics.RaycastAll(_lastPosition, transform.forward, RaycastDistance, RaycastLayer);
+            _lastPosition = transform.position;
+
+            var hitsCount = hits.Length;
+            for (int i = 0; i < hitsCount; i++)
+            {
+                var hitCollider = hits[i].collider;
+
+                // Don't apply damage on the same object multiple times.
+                if (hitCollider == _oldHit)
+                    continue;
+
+                if (AllCollidersToIgnore.Contains(hitCollider))
+                    continue;
+
+                if (TagsToDamage.Contains(hitCollider.tag))
+                {
+                    IsColliding = true;
+                    _oldHit = hitCollider;
+                    DoDamage(hitCollider, hits[i].point, hits[i].normal, Damage, HitParticlesList, HitSoundsAudioSource);
                     Invoke(nameof(DisableCollidedState), 0.1f);
                     DisableDamagingForSeconds(HitMinTime);
+                    break;
                 }
             }
+
+            if (hitsCount == 0)
+                _oldHit = null;
+        }
+
+        private void SetupCollidersToIgnore()
+        {
+            Collider thisCollider = GetComponent<Collider>();
+
+            // Setup default colliders to ignore collision.
+            if (!IgnoreRootColliders && thisCollider)
+            {
+                for (int i = 0; i < AllCollidersToIgnore.Length; i++)
+                    if (AllCollidersToIgnore[i])
+                        Physics.IgnoreCollision(AllCollidersToIgnore[i], thisCollider, true);
+
+                return;
+            }
+            else if (!IgnoreRootColliders)
+                return;
+
+            // Get all root colliders.
+            var rootCollidersList = transform.root.GetComponentsInChildren<Collider>().ToList();
+            if (thisCollider)
+                rootCollidersList.Remove(thisCollider);
+
+            // Merge root colliders into AllCollidersToIgnore list.
+            var rootColliders = rootCollidersList.ToArray();
+            int oldLength = AllCollidersToIgnore.Length;
+            int rootLength = rootColliders.Length;
+
+            if (oldLength > 0)
+            {
+                // Add all root colliders colliders to ignore list.
+                Array.Resize(ref AllCollidersToIgnore, oldLength + rootLength - 1);
+                for (int i = 0; i < rootLength; i++)
+                    AllCollidersToIgnore[Mathf.Max(oldLength - 1, 0) + i] = rootColliders[i];
+            }
+            else
+                AllCollidersToIgnore = rootColliders;
+
+            // Remove all duplicated items.
+            AllCollidersToIgnore = new HashSet<Collider>(AllCollidersToIgnore).ToArray();
+
+            // Setup default colliders to ignore collision.
+            if (thisCollider)
+            {
+                foreach (Collider collider in AllCollidersToIgnore)
+                    if (collider && collider != thisCollider)
+                        Physics.IgnoreCollision(collider, thisCollider, true);
+            }
+        }
+
+        private void DisableCollidedState()
+        {
+            _oldHit = null;
+            IsColliding = false;
+        }
+
+        private void EnableDamaging()
+        {
+            CanHit = true;
+        }
+
+        public void DisableDamagingForSeconds(float disabledSeconds)
+        {
+            if (IsInvoking(nameof(EnableDamaging)))
+                return;
+
+            CanHit = false;
+            Invoke(nameof(EnableDamaging), disabledSeconds);
+        }
+
+        public void DoDamage(Collider collider, Vector3 point, Vector3 normal, float damage, SurfaceAudiosWithFX[] hitParticles, AudioSource hitAudioSource)
+        {
+            DamageableBodyPart bodyPart = collider.GetComponentInChildren<DamageableBodyPart>();
+            float realDamage = damage;
+
+            JUHealth.DamageInfo damageInfo = new JUHealth.DamageInfo
+            {
+                Damage = damage,
+                HitDirection = normal,
+                HitPosition = point,
+                HitOriginPosition = transform.position,
+                HitOwner = _characterOwner ? _characterOwner.gameObject : null
+            };
+
+            if (!bodyPart)
+            {
+                JUHealth health = collider.GetComponentInParent<JUHealth>();
+
+                if (health)
+                {
+                    health.DoDamage(damageInfo);
+                    if (ShowHitMarker)
+                        if (!health.IsDead && realDamage > 0)
+                            HitMarkerEffect.HitCheck(health.transform.tag, point, realDamage);
+                }
+            }
+            else
+            {
+                realDamage = bodyPart.DoDamage(damageInfo);
+                if (ShowHitMarker)
+                {
+                    if (!bodyPart.Health.IsDead && realDamage > 0)
+                        HitMarkerEffect.HitCheck(bodyPart.transform.tag, point, realDamage);
+                }
+            }
+
+            //Instantiate Particle FX
+            Quaternion particleRotation = Quaternion.LookRotation(normal);
+            string tag = collider.tag;
+
+            GameObject fx = SurfaceAudiosWithFX.Play(hitAudioSource, hitParticles, point, particleRotation, null, tag);
+
+            if (fx)
+                fx.transform.parent = collider.transform;
         }
 
         private void OnDrawGizmos()
@@ -164,7 +326,7 @@ namespace JUTPS
             if (RaycastingMode)
             {
                 Gizmos.color = Color.red;
-                Gizmos.DrawLine(transform.position, transform.position + transform.forward * RaycastDistance);
+                Gizmos.DrawLine(transform.position, transform.position + (transform.forward * RaycastDistance));
             }
             else
             {
@@ -174,129 +336,6 @@ namespace JUTPS
                 Gizmos.color = new Color(1, 1, 1, 0.25f);
                 Gizmos.DrawWireCube(Vector3.zero, Vector3.one);
             }
-        }
-
-        public void DoDamage(Collider trigger, float damage, List<SurfaceAudiosWithFX> hitParticles, AudioSource hitAudioSource)
-        {
-            DamageableBodyPart bodyPart = trigger.gameObject.GetComponentInChildren<DamageableBodyPart>();
-            Vector3 damagePoint = trigger.ClosestPoint(transform.position);
-            float realDamage = damage;
-            if (bodyPart == null)
-            {
-                JUHealth health = trigger.gameObject.GetComponentInParent<JUHealth>();
-                if (health != null)
-                {
-                    //Do Damage
-                    health.DoDamage(damage);
-
-                    //Hit Marker
-                    if (Owner != null)
-                    {
-                        if (health.IsDead == false) HitMarkerEffect.HitCheck(health.transform.tag, Owner.tag, damagePoint, realDamage);
-                    }
-                }
-            }
-            else
-            {
-                realDamage = bodyPart.DoDamage(damage);
-                if (Owner != null && bodyPart != null && realDamage > 0)
-                {
-                    if (bodyPart.Health.IsDead == false) HitMarkerEffect.HitCheck(bodyPart.transform.tag, Owner.tag, damagePoint, realDamage);
-                }
-            }
-
-            //Instantiate Particle FX
-            Vector3 contactPoint = trigger.ClosestPoint(transform.position);
-
-            Vector3 contactNormal = (transform.position - trigger.ClosestPoint(transform.position)).normalized;
-
-            Quaternion particleRotation = Quaternion.LookRotation(contactNormal);
-            GameObject fx = SurfaceAudiosWithFX.Play(hitAudioSource, hitParticles, contactPoint, particleRotation, null, bodyPart != null ? bodyPart.tag : trigger.transform.tag);
-            fx.transform.parent = trigger.transform;
-        }
-
-        public void DoDamage(Collision collision, float damage, List<SurfaceAudiosWithFX> hitParticles, AudioSource hitAudioSource)
-        {
-            DamageableBodyPart bodyPart = collision.gameObject.GetComponentInChildren<DamageableBodyPart>();
-            Vector3 damagePoint = collision.contacts[0].point;
-            float realDamage = damage;
-            if (bodyPart == null)
-            {
-                JUHealth health = collision.gameObject.GetComponentInParent<JUHealth>();
-                if (health != null)
-                {
-                    //Do Damage
-                    health.DoDamage(damage);
-
-                    //Hit Marker
-                    if (Owner != null)
-                    {
-                        if (health.IsDead == false) HitMarkerEffect.HitCheck(health.transform.tag, Owner.tag, damagePoint, realDamage);
-                    }
-                }
-            }
-            else
-            {
-                realDamage = bodyPart.DoDamage(damage);
-                if (Owner != null && bodyPart != null && realDamage > 0)
-                {
-                    if (bodyPart.Health.IsDead == false) HitMarkerEffect.HitCheck(bodyPart.transform.tag, Owner.tag, damagePoint, realDamage);
-                }
-            }
-
-            //Instantiate Particle FX
-            Vector3 contactPoint = collision.contacts[0].point;
-            Vector3 contactNormal = collision.contacts[0].normal;
-            Quaternion particleRotation = Quaternion.LookRotation(contactNormal);
-            GameObject fx = SurfaceAudiosWithFX.Play(hitAudioSource, hitParticles, contactPoint, particleRotation, null, bodyPart != null ? bodyPart.tag : collision.collider.transform.tag);
-            fx.transform.parent = collision.transform;
-        }
-        public void DoDamage(RaycastHit hit, Collision collision, float damage, List<SurfaceAudiosWithFX> hitParticles, AudioSource hitAudioSource, Collider[] CollidersToIgnore = null)
-        {
-            if (CollidersToIgnore != null)
-            {
-                foreach (Collider col in CollidersToIgnore)
-                {
-                    //Debug.Log(hit.collider.gameObject +" | "+ col.gameObject);
-                    if (hit.collider.gameObject == col.gameObject) { return; }
-                }
-            }
-
-            DamageableBodyPart bodyPart = (hit.point != Vector3.zero) ? hit.collider.gameObject.GetComponentInChildren<DamageableBodyPart>() : collision.gameObject.GetComponentInChildren<DamageableBodyPart>();
-            Vector3 damagePoint = (hit.point != Vector3.zero) ? hit.point : collision.contacts[0].point;
-            float realDamage = damage;
-            if (bodyPart == null)
-            {
-                JUHealth health = (hit.point != Vector3.zero) ? hit.collider.gameObject.GetComponentInParent<JUHealth>() : collision.gameObject.GetComponentInParent<JUHealth>();
-                if (health != null)
-                {
-                    //Do Damage
-                    health.DoDamage(damage);
-
-                    //Hit Marker
-                    if (Owner != null)
-                    {
-                        if (health.IsDead == false && realDamage > 0) HitMarkerEffect.HitCheck(health.transform.tag, Owner.tag, damagePoint, realDamage);
-                    }
-                }
-            }
-            else
-            {
-                realDamage = bodyPart.DoDamage(damage);
-                if (Owner != null)
-                {
-                    if (bodyPart.Health.IsDead == false && realDamage > 0) HitMarkerEffect.HitCheck(bodyPart.transform.tag, Owner.tag, damagePoint, realDamage);
-                }
-            }
-
-            //Instantiate Particle FX
-            Vector3 contactPoint = (hit.point != Vector3.zero) ? hit.point : collision.GetContact(0).point;
-            Vector3 contactNormal = (hit.point != Vector3.zero) ? hit.normal : collision.GetContact(0).normal;
-            Quaternion particleRotation = Quaternion.LookRotation(contactNormal);
-            string tag = (hit.point != Vector3.zero) ? hit.transform.tag : collision.gameObject.tag;
-
-            GameObject fx = SurfaceAudiosWithFX.Play(hitAudioSource, hitParticles, contactPoint, particleRotation, null, tag);
-            fx.transform.parent = (hit.point != Vector3.zero) ? hit.collider.transform : collision.collider.transform;
         }
     }
 

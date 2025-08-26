@@ -7,6 +7,7 @@ using JUTPS.JUInputSystem;
 using JUTPS.CameraSystems;
 using JUTPS.WeaponSystem;
 using JUTPS;
+using UnityEngine.InputSystem;
 
 namespace JUTPS.UI
 {
@@ -52,7 +53,7 @@ namespace JUTPS.UI
             Instance = this;
 
             //Assign camera
-            cameraController = FindFirstObjectByType<JUCameraController>();
+            cameraController = FindObjectOfType<JUCameraController>();
 
             //if theres no player, theres nothing to 
             var playerobject = GameObject.FindGameObjectWithTag("Player");
@@ -83,7 +84,7 @@ namespace JUTPS.UI
             if (Crosshairs.Length == 0) return;
 
             //Get precision
-            Weapon WeaponInUse = (player.WeaponInUseLeftHand == null) ? player.WeaponInUseRightHand : player.WeaponInUseLeftHand;
+            Weapon WeaponInUse = (player.LeftHandWeapon == null) ? player.RightHandWeapon : player.LeftHandWeapon;
             SmoothedWeaponPrecision = GetWeaponPrecisionValue(SmoothedWeaponPrecision, WeaponInUse, CrosshairChangeSpeed);
 
             if (Crosshairs.Length > 1)
@@ -109,15 +110,13 @@ namespace JUTPS.UI
             }
 
             //Update CrosshairPosition
-            if (FollowMousePosition)
+            if (FollowMousePosition && Mouse.current != null)
             {
-                if (JUInput.Instance().InputActions == null) return;
-
                 Vector2 movePos;
-                Vector2 GetMousePos = JUInput.Instance().InputActions.Player.MousePosition.ReadValue<Vector2>();
-                RectTransformUtility.ScreenPointToLocalPointInRectangle(ParentCanvas.transform as RectTransform, GetMousePos, ParentCanvas.worldCamera, out movePos);
+                Vector2 mousePos = Mouse.current.position.value;
+                RectTransformUtility.ScreenPointToLocalPointInRectangle(ParentCanvas.transform as RectTransform, mousePos, ParentCanvas.worldCamera, out movePos);
 
-                Vector3 mousePos = ParentCanvas.transform.TransformPoint(movePos);
+                Vector3 mousePosOnUi = ParentCanvas.transform.TransformPoint(movePos);
 
                 //Set fake mouse Cursor
                 CrosshairCenterPoint.transform.position = mousePos;
@@ -187,10 +186,16 @@ namespace JUTPS.UI
         }
         public static void GetObjectOnCrosshairPoint(Camera camera, LayerMask CrosshairRaycastLayerMask, out GameObject ObjectOnMousePosition)
         {
+            if (Mouse.current == null)
+            {
+                ObjectOnMousePosition = null;
+                return;
+            }
+
             ObjectOnMousePosition = null;
 
             //Create a ray on mouse position
-            Ray MouseRay = camera.ScreenPointToRay(JUInput.GetMousePosition());
+            Ray MouseRay = camera.ScreenPointToRay(Mouse.current.position.value);
             RaycastHit hit;
             if (Physics.Raycast(MouseRay, out hit, 1000, CrosshairRaycastLayerMask))
             {
@@ -276,7 +281,7 @@ namespace JUTPS.UI
         {
             if (Instance == null)
             {
-                Instance = FindFirstObjectByType<Crosshair>();
+                Instance = FindObjectOfType<Crosshair>();
                 return 0;
             }
             var precision = Mathf.Lerp(Current, Instance.CrosshairSensibility * 100 * (WeaponInUse ? WeaponInUse.ShotErrorProbability : 0), Speed * Time.deltaTime);

@@ -1,15 +1,13 @@
-﻿using UnityEngine;
-using UnityEditor;
-
-using JUTPS;
-using JUTPS.AI;
+﻿using JUTPS;
 using JUTPS.ActionScripts;
-using JUTPS.InventorySystem;
-using JUTPS.ItemSystem;
-using JUTPS.WeaponSystem;
-using JUTPS.PhysicsScripts;
 using JUTPS.FX;
-using UnityEngine.UIElements;
+using JUTPS.InteractionSystem;
+using JUTPS.InventorySystem;
+using JUTPS.JUInputSystem;
+using JUTPS.PhysicsScripts;
+using JUTPS.WeaponSystem;
+using UnityEditor;
+using UnityEngine;
 
 namespace JUTPSEditor
 {
@@ -20,21 +18,22 @@ namespace JUTPSEditor
         {
             if (Selection.activeGameObject == null)
             {
-                MessageWindow.ShowMessage("No character selected. Please select a HUMANOID character and try again", "No Selection", "OK", 125, 276, 14, MessageType.Warning);
+                //Debug.LogWarning("No character selected. Please select a Humanoid Character and try again");
+                JUTPSEditor.MessageWindow.ShowMessage("No character selected. Please select a HUMANOID character and try again", "No Selection", "OK", 125, 276, 14, MessageType.Warning);
             }
             else
             {
                 var pl = Selection.gameObjects[0];
-                SetupCharacterController(pl, moveSpeed: 3, rotationSpeed: 3, stoppingSpeed: 2f, curvedMovement: true, lerpRotation: true, useRootMotion: true, addFootplacer: true, addFootstep: true, addDrivingAnimation: true, addBodyLean: true, addRagdoller: true, blockDefaultInputs: false);
+                SetupCharacterController(pl, moveSpeed: 3, rotationSpeed: 3, stoppingSpeed: 4f, curvedMovement: true, lerpRotation: true, useRootMotion: true, addFootplacer: true, addFootstep: true, addDrivingAnimation: true, addBodyLean: true, addRagdoller: true, blockDefaultInputs: false);
             }
         }
-
         [MenuItem("GameObject/JUTPS Create/Quick Setup/JU Character/Simple TPS Controller", false, 0)]
         public static void SetupSimpleTPSCharacter()
         {
             if (Selection.activeGameObject == null)
             {
-                MessageWindow.ShowMessage("No character selected. Please select a HUMANOID character and try again", "No Selection", "OK", 125, 276, 14, MessageType.Warning);
+                //Debug.LogWarning("No character selected. Please select a Humanoid Character and try again");
+                JUTPSEditor.MessageWindow.ShowMessage("No character selected. Please select a HUMANOID character and try again", "No Selection", "OK", 125, 276, 14, MessageType.Warning);
             }
             else
             {
@@ -47,7 +46,8 @@ namespace JUTPSEditor
         {
             if (Selection.activeGameObject == null)
             {
-                MessageWindow.ShowMessage("No character selected. Please select a HUMANOID character and try again", "No Selection", "OK", 125, 276, 14, MessageType.Warning);
+                //Debug.LogWarning("No character selected. Please select a Humanoid Character and try again");
+                JUTPSEditor.MessageWindow.ShowMessage("No character selected. Please select a HUMANOID character and try again", "No Selection", "OK", 125, 276, 14, MessageType.Warning);
             }
             else
             {
@@ -65,7 +65,8 @@ namespace JUTPSEditor
         {
             if (Selection.activeGameObject == null)
             {
-                MessageWindow.ShowMessage("No character selected. Please select a HUMANOID character and try again", "No Selection", "OK", 125, 276, 14, MessageType.Warning);
+                //Debug.LogWarning("No character selected. Please select a Humanoid Character and try again");
+                JUTPSEditor.MessageWindow.ShowMessage("No character selected. Please select a HUMANOID character and try again", "No Selection", "OK", 125, 276, 14, MessageType.Warning);
             }
             else
             {
@@ -76,9 +77,13 @@ namespace JUTPSEditor
                 AimOnMousePosition aimMouse = (AimOnMousePosition)Undo.AddComponent(pl, typeof(AimOnMousePosition));
                 aimMouse.PreventResetingAimPosition = true;
 
-                MessageWindow.ShowMessage("Top Down Setup Note: the variable 'BlockFireModeOnCursorInvisible' has been disabled for the TopDown Locomotion to work, this means the cursor doesn't need to be hidden to be able to aim and shoot", "Top Down Setup Note", "OK", 150, 276, 14, MessageType.Info);
+                JUTPSEditor.MessageWindow.ShowMessage("Top Down Setup Note: the variable 'BlockFireModeOnCursorInvisible' has been disabled for the TopDown Locomotion to work, this means the cursor doesn't need to be hidden to be able to aim and shoot", "Top Down Setup Note", "OK", 150, 276, 14, MessageType.Info);
+
+                //Debug.Log("Top Down Setup Note: the variable 'BlockFireModeOnCursorInvisible' has been disabled for the TopDown Locomotion to work, this means the cursor doesn't need to be hidden to be able to aim and shoot");
             }
         }
+
+
 
         [MenuItem("GameObject/JUTPS Create/Quick Setup/Add/Setup Character Hit Boxes", false, 0)]
         public static void SetupHitBoxes()
@@ -95,10 +100,12 @@ namespace JUTPSEditor
 
                     if (Resources.Load("HitBox") == null)
                     {
-                        MessageWindow.ShowMessage("HITBOX setup could not be done because cannot load HitBox prefab from Resources folder", "Error", "OK", 125, 276, 14, MessageType.Error);
+                        //Debug.LogError("Unable to load hitbox prefab from resources folder");
+                        JUTPSEditor.MessageWindow.ShowMessage("HITBOX setup could not be done because cannot load HitBox prefab from Resources folder", "Error", "OK", 125, 276, 14, MessageType.Error);
                     }
                     else
                     {
+                        // >>> HIT BOX SETUP
                         GameObject HitBoxPrefab = Resources.Load("HitBox") as GameObject;
 
                         Animator anim = tps.GetComponent<Animator>();
@@ -109,6 +116,7 @@ namespace JUTPSEditor
                         }
                         else
                         {
+                            //Humanoid error
                             if (anim.isHuman == false)
                             {
                                 Debug.LogError("Your character rig is not HUMANOID type, please use a humanoid type character.", anim);
@@ -164,139 +172,69 @@ namespace JUTPSEditor
                 }
                 else
                 {
-                    MessageWindow.ShowMessage("No JU CHARACTER selected, please select a JU CHARACTER and try again", "No JU Character", "OK", 125, 276, 14, MessageType.Warning);
+                    JUTPSEditor.MessageWindow.ShowMessage("No JU CHARACTER selected, please select a JU CHARACTER and try again", "No JU Character", "OK", 125, 276, 14, MessageType.Warning);
                 }
             }
         }
 
-
-        [MenuItem("GameObject/JUTPS Create/Quick Setup/Add/Setup Zombie AI", false, 0)]
-        public static void SetupZombieAI()
+        [MenuItem("GameObject/JUTPS Create/Quick Setup/Add/Add Zombie AI Behaviour Model", false, 0)]
+        public static void AddZombieAI()
         {
             if (Selection.activeGameObject == null)
             {
-                MessageWindow.ShowMessage("No JU character selected, please select a JU Character and try again", "Error", "OK", 125, 276, 14, MessageType.Error);
+                JUTPSEditor.MessageWindow.ShowMessage("No JU CHARACTER selected. Please select a JU CHARACTER and try again", "No JU Character", "OK", 125, 276, 14, MessageType.Warning);
             }
             else
             {
                 var pl = Selection.gameObjects[0];
                 if (pl.TryGetComponent(out JUCharacterController tps))
                 {
-                    Undo.RecordObject(tps, "Zombie Setup");
-                    tps.IsArtificialIntelligence = true;
-                    tps.tag = "Enemy";
-
-                    if (tps.GetComponent<JUHealth>() == null)
-                    {
-                        Undo.AddComponent(tps.gameObject, typeof(JUHealth));
-                    }
-                    if (tps.TryGetComponent(out ZombieAI zombie))
-                    {
-                        Undo.RecordObject(zombie, "Zombie Setup");
-                        zombie.SensorLayerMask = LayerMask.GetMask("Default", "Vehicle", "Character", "Terrain", "Walls");
-                        zombie.StartRunningAtDistance = 1;
-                        zombie.FieldOfView.Angle = 220;
-                        zombie.FieldOfView.Radious = 20;
-                        zombie.AttackAtDistance = 1;
-                        zombie.AttackDuration = 0;
-                        zombie.MinTimeToAttack = 1;
-                        zombie.MaxTimeToAttack = 5;
-                    }
-                    else
-                    {
-                        ZombieAI zombieAI = (ZombieAI)Undo.AddComponent(tps.gameObject, typeof(ZombieAI));
-                        Undo.RecordObject(zombieAI, "Zombie Setup");
-                        zombieAI.SensorLayerMask = LayerMask.GetMask("Default", "Vehicle", "Character", "Terrain", "Walls");
-                        zombieAI.StartRunningAtDistance = 1;
-                        zombieAI.FieldOfView.Angle = 220;
-                        zombieAI.FieldOfView.Radious = 20;
-                        zombieAI.AttackAtDistance = 1;
-                        zombieAI.AttackDuration = 0;
-                        zombieAI.MinTimeToAttack = 1;
-                        zombieAI.MaxTimeToAttack = 5;
-                    }
+                    pl.AddComponent<JU.CharacterSystem.AI.JU_AI_Zombie>();
                 }
                 else
                 {
-                    MessageWindow.ShowMessage("Selected GameObject(" + Selection.gameObjects[0].name + ") is not a JU Character, please select a JU Character and try again", "Error", "OK", 125, 276, 14, MessageType.Error);
+                    JUTPSEditor.MessageWindow.ShowMessage("No JU CHARACTER selected, please select a JU CHARACTER and try again", "No JU Character", "OK", 125, 276, 14, MessageType.Warning);
                 }
             }
         }
-
-        [MenuItem("GameObject/JUTPS Create/Quick Setup/Add/Setup Patrol AI", false, 0)]
-        public static void SetupPatrolAI()
+        [MenuItem("GameObject/JUTPS Create/Quick Setup/Add/Add Patrol AI Behaviour Model", false, 0)]
+        public static void AddPatrolAI()
         {
             if (Selection.activeGameObject == null)
             {
-                MessageWindow.ShowMessage("No JU character selected, please select a JU Character and try again", "Error", "OK", 125, 276, 14, MessageType.Error);
+                JUTPSEditor.MessageWindow.ShowMessage("No JU CHARACTER selected. Please select a JU CHARACTER and try again", "No JU Character", "OK", 125, 276, 14, MessageType.Warning);
             }
             else
             {
                 var pl = Selection.gameObjects[0];
                 if (pl.TryGetComponent(out JUCharacterController tps))
                 {
-                    Undo.RecordObject(tps, "Zombie Setup");
-                    tps.IsArtificialIntelligence = true;
-                    tps.tag = "Enemy";
-
-                    if (tps.GetComponent<JUHealth>() == null)
-                        Undo.AddComponent(tps.gameObject, typeof(JUHealth));
-
-                    if (tps.GetComponent<JUInventory>() == null)
-                        Undo.AddComponent(tps.gameObject, typeof(JUInventory));
-
-                    if (tps.GetComponent<ItemSwitchManager>() == null)
-                        Undo.AddComponent(tps.gameObject, typeof(ItemSwitchManager));
-
-
-                    if (tps.TryGetComponent(out PatrolAI patrol))
-                    {
-                        Undo.RecordObject(patrol.gameObject, "Patrol Setup");
-                        patrol.SensorLayerMask = LayerMask.GetMask("Default", "Vehicle", "Character", "Terrain", "Walls");
-                        patrol.StartRunningAtDistance = 5;
-                        patrol.SetFieldOfView(new FieldView(radious: 20, angle: 220));
-                        patrol.AttackAtDistance = 10;
-                        patrol.AttackDuration = 1;
-                        patrol.MinTimeToAttack = 0.5f;
-                        patrol.MaxTimeToAttack = 3;
-                    }
-                    else
-                    {
-                        PatrolAI patrolAi = (PatrolAI)Undo.AddComponent(tps.gameObject, typeof(PatrolAI));
-                        Undo.RecordObject(patrolAi.gameObject, "Patrol Setup");
-                        patrolAi.SensorLayerMask = LayerMask.GetMask("Default", "Vehicle", "Character", "Terrain", "Walls");
-                        patrolAi.StartRunningAtDistance = 1;
-                        patrolAi.SetFieldOfView(new FieldView(radious: 20, angle: 220));
-                        patrolAi.AttackAtDistance = 10;
-                        patrolAi.AttackDuration = 1;
-                        patrolAi.MinTimeToAttack = 0.5f;
-                        patrolAi.MaxTimeToAttack = 3;
-                    }
-
+                    pl.AddComponent<JU.CharacterSystem.AI.JU_AI_PatrolCharacter>();
                 }
                 else
                 {
-                    MessageWindow.ShowMessage("Selected GameObject(" + Selection.gameObjects[0].name + ") is not a JU Character, please select a JU Character and try again", "Error", "OK", 125, 276, 14, MessageType.Error);
+                    JUTPSEditor.MessageWindow.ShowMessage("No JU CHARACTER selected, please select a JU CHARACTER and try again", "No JU Character", "OK", 125, 276, 14, MessageType.Warning);
                 }
             }
         }
-
-
-        public static void SetupCharacterController(GameObject CharacterGameObject, float moveSpeed = 3, float rotationSpeed = 3, float stoppingSpeed = 1f, bool curvedMovement = true, bool lerpRotation = true, bool useRootMotion = false, bool addFootplacer = true, bool addFootstep = true, bool addDrivingAnimation = false, bool addBodyLean = false, bool addRagdoller = false, bool addInventory = true, bool blockDefaultInputs = false, string animatorControllerPath = "Assets/Julhiecio TPS Controller/Animations/Animator/AnimatorTPS Controller.controller")
+        public static void SetupCharacterController(GameObject CharacterGameObject, float moveSpeed = 3, float rotationSpeed = 3, float stoppingSpeed = 1f, bool curvedMovement = true, bool lerpRotation = true, bool useRootMotion = false, bool addFootplacer = true, bool addFootstep = true, bool addDrivingAnimation = false, bool addBodyLean = false, bool addRagdoller = false, bool addInventory = true, bool blockDefaultInputs = false, string animatorControllerPath = "Assets/Julhiecio TPS Controller/Animations/Animator/AnimatorTPS Controller.controller", string DefaultInputAssetPath = "Assets/Julhiecio TPS Controller/Input Controls/Player Character Inputs.asset")
         {
             if (CharacterGameObject.GetComponent<JUCharacterController>() != null)
-                MessageWindow.ShowMessage("Setup could not be done because the selected GameObject already has the JU Character Controller added", "Setup could not be done", "OK", 125, 276, 14, MessageType.Warning);
-
+            {
+                JUTPSEditor.MessageWindow.ShowMessage("Setup could not be done because the selected GameObject already has the JU Character Controller added", "Setup could not be done", "OK", 125, 276, 14, MessageType.Warning);
+            }
             Undo.RecordObject(CharacterGameObject, "Setup Character");
             var anim = CharacterGameObject.GetComponent<Animator>();
 
             if (anim == null)
             {
-                MessageWindow.ShowMessage("Setup could not be done because " + CharacterGameObject.gameObject.name + " GameObject does not have an animator", "Setup could not be done", "OK", 125, 276, 14, MessageType.Error);
+                //Debug.LogError(CharacterGameObject.gameObject.name + " GameObject does not have an animator", CharacterGameObject);
+                JUTPSEditor.MessageWindow.ShowMessage("Setup could not be done because " + CharacterGameObject.gameObject.name + " GameObject does not have an animator", "Setup could not be done", "OK", 125, 276, 14, MessageType.Error);
                 return;
             }
             else
             {
+                //Humanoid error
                 if (anim.isHuman == false)
                 {
                     Debug.LogError("Your character rig is not humanoid type, please use a humanoid type character.", anim);
@@ -304,16 +242,27 @@ namespace JUTPSEditor
                     return;
                 }
             }
-            var col = (CapsuleCollider)Undo.AddComponent(CharacterGameObject, typeof(CapsuleCollider));
-            var noSlip = (PhysicsMaterial)(Resources.Load("NoSlip", typeof(PhysicsMaterial)));
+            if (!CharacterGameObject.TryGetComponent<CapsuleCollider>(out var col))
+                col = (CapsuleCollider)Undo.AddComponent(CharacterGameObject, typeof(CapsuleCollider));
+
+            var noSlip = (PhysicsMaterial)Resources.Load("NoSlip", typeof(PhysicsMaterial));
             col.material = noSlip;
 
             Undo.AddComponent(CharacterGameObject, typeof(ResizableCapsuleCollider));
 
-            var rb = (Rigidbody)Undo.AddComponent(CharacterGameObject, typeof(Rigidbody));
-            var tps = (JUCharacterController)Undo.AddComponent(CharacterGameObject, typeof(JUCharacterController));             
-            var animatorController = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(animatorControllerPath);
+            if (!CharacterGameObject.TryGetComponent<Rigidbody>(out var rb))
+                rb = (Rigidbody)Undo.AddComponent(CharacterGameObject, typeof(Rigidbody));
 
+            if (!CharacterGameObject.TryGetComponent<JUInteractionSystem>(out var interaction))
+                Undo.AddComponent(CharacterGameObject, typeof(JUInteractionSystem));
+
+            var tps = (JUCharacterController)Undo.AddComponent(CharacterGameObject, typeof(JUCharacterController));
+            var animatorController = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(animatorControllerPath);
+            //Setup Default Inputs in character controller
+            var inputAsset = AssetDatabase.LoadAssetAtPath<JUPlayerCharacterInputAsset>(DefaultInputAssetPath);
+            tps.Inputs = inputAsset;
+
+            //Setup Animator Controller
             bool animatorError = false;
             if (animatorController != null)
             {
@@ -323,16 +272,20 @@ namespace JUTPSEditor
             {
                 animatorError = true;
                 Debug.LogError("Could not load default Animator Controller, assign manually", anim);
-                MessageWindow.ShowMessage("Could not load default Animator Controller, assign it manually", "Could not load Animator Controller", "OK", 125, 276, 14, MessageType.Warning);
+                JUTPSEditor.MessageWindow.ShowMessage("Could not load default Animator Controller, assign it manually", "Could not load Animator Controller", "OK", 125, 276, 14, MessageType.Warning);
             }
 
+            //Setup character Tag and Layer
             CharacterGameObject.tag = "Player";
             CharacterGameObject.layer = 9;
 
-            JUTPSCreate.CreateNewWeaponRotationCenter();
+            //Create new item rotation center
+            JUTPSEditor.JUTPSCreate.CreateNewWeaponRotationCenter();
 
+            //Assign item rotation center
             tps.PivotItemRotation = CharacterGameObject.GetComponentInChildren<WeaponAimRotationCenter>().gameObject;
 
+            //Change Controller Variables
             tps.Speed = moveSpeed;
             tps.CurvedMovement = curvedMovement;
             tps.RotationSpeed = rotationSpeed;
@@ -340,47 +293,52 @@ namespace JUTPSEditor
             tps.StoppingSpeed = stoppingSpeed;
             tps.RootMotion = useRootMotion;
 
+            //Rigidbody setup
             rb.mass = 85;
             rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
             rb.constraints = RigidbodyConstraints.FreezeRotation;
 
+            //Capsule Collider Setup
             col.height = 1.7f;
             col.center = new Vector3(0, 0.85f, 0);
             col.radius = 0.4f;
 
             // >>> Additional FXs Setup <<<
 
+            //Footplacer
             if (addFootplacer) Undo.AddComponent(CharacterGameObject, typeof(JUTPS.JUFootPlacement));
 
+            //Footstep
             if (addFootstep)
             {
                 JUFootstep footstep = (JUFootstep)Undo.AddComponent(CharacterGameObject, typeof(JUFootstep));
                 footstep.LoadDefaultFootstepInInspector();
             }
-
-            if (addBodyLean) 
-                Undo.AddComponent(CharacterGameObject, typeof(BodyLeanInert));
-
-            if (addDrivingAnimation) 
-                Undo.AddComponent(CharacterGameObject, typeof(ProceduralDrivingAnimation));
-
-            if (addRagdoller) 
-                Undo.AddComponent(CharacterGameObject, typeof(AdvancedRagdollController));
-
+            //Body Lean Effect
+            if (addBodyLean) Undo.AddComponent(CharacterGameObject, typeof(BodyLeanInert));
+            //Driving Animation Effect
+            if (addDrivingAnimation) Undo.AddComponent(CharacterGameObject, typeof(ProceduralDrivingAnimation));
+            //Ragdoller
+            if (addRagdoller) Undo.AddComponent(CharacterGameObject, typeof(AdvancedRagdollController));
+            //Inventory
             if (addInventory)
             {
                 Undo.AddComponent(CharacterGameObject, typeof(JUInventory));
-                Undo.AddComponent(CharacterGameObject, typeof(ItemSwitchManager));
+                //Setup default input asset on inventory
+                CharacterGameObject.GetComponent<JUInventory>().PlayerInputs = inputAsset;
             }
 
-            if (animatorError == false)
+            Undo.AddComponent(CharacterGameObject, typeof(AudioSource));
+
+            if (!animatorError)
             {
-                MessageWindow.ShowMessage("Successful character setup", "Quick Character Setup", "OK", 115, 276, 14);
+                JUTPSEditor.MessageWindow.ShowMessage("Successful character setup", "Quick Character Setup", "OK", 115, 276, 14);
             }
             else
             {
-                MessageWindow.ShowMessage("Partial success, Animator Controller cannot be loaded, please assign it manually.", "Animator Controller cannot be loaded", "OK", 140, 276, 14, MessageType.Warning);
+                JUTPSEditor.MessageWindow.ShowMessage("Partial success, Animator Controller cannot be loaded, please assign it manually.", "Animator Controller cannot be loaded", "OK", 140, 276, 14, MessageType.Warning);
             }
+
         }
     }
 }
